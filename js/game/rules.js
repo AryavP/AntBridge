@@ -6,7 +6,7 @@ import { GameState } from './state.js';
 export const GameRules = {
   HAND_SIZE: 5,
   TRADE_ROW_SIZE: 5,
-  CONSTRUCTION_ROW_SIZE: 3,
+  CONSTRUCTION_ROW_SIZE: 1,  // Only show 1 objective at a time
 
   // Initialize game with starter decks and market
   setupGame(cardData, starterDeckData, constructionData) {
@@ -25,10 +25,25 @@ export const GameRules = {
       ...this.createMarketPool(cardData)
     ]);
 
-    // Create construction deck (shuffle objectives)
-    GameState.constructionDeck = GameState.shuffle([
-      ...constructionData.objectives.map(obj => obj.id)
-    ]);
+    // Create construction deck organized by tier
+    // Group objectives by tier
+    const objectivesByTier = {};
+    constructionData.objectives.forEach(obj => {
+      if (!objectivesByTier[obj.tier]) {
+        objectivesByTier[obj.tier] = [];
+      }
+      objectivesByTier[obj.tier].push(obj.id);
+    });
+
+    // Shuffle within each tier and store
+    GameState.constructionDeck = [];
+    GameState.objectivesByTier = objectivesByTier;
+    GameState.currentTier = 1;  // Start at tier 1
+
+    // Shuffle tier 1 objectives for the starting pool
+    if (objectivesByTier[1]) {
+      GameState.constructionDeck = GameState.shuffle([...objectivesByTier[1]]);
+    }
 
     // Fill trade row and construction row
     this.fillTradeRow();
@@ -174,13 +189,6 @@ export const GameRules = {
 
   // Validate if an ant can be placed on construction objective
   canPlaceOnConstruction(playerId, antCard, objectiveId) {
-    const player = GameState.players[playerId];
-
-    // Check if ant has build ability
-    if (!antCard.abilities || !antCard.abilities.includes('build')) {
-      return false;
-    }
-
     // Check if objective is in construction row
     if (!GameState.constructionRow.includes(objectiveId)) {
       return false;
@@ -190,12 +198,12 @@ export const GameRules = {
   },
 
   // Validate attack
-  canAttack(attackerId, targetId, attackPower) {
+  canAttack(attackerId, targetId, attackPower, cardData) {
     if (attackerId === targetId) {
       return { valid: false, reason: "Cannot attack yourself" };
     }
 
-    const targetDefense = GameState.calculateDefense(targetId);
+    const targetDefense = GameState.calculateDefense(targetId, cardData);
 
     if (attackPower <= targetDefense) {
       return { valid: false, reason: `Attack power (${attackPower}) must exceed defense (${targetDefense})` };

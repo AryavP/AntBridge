@@ -285,6 +285,8 @@ class AntBridgeGame {
 
   // Listen to game updates from Firebase
   listenToGame() {
+    let gameInitialized = false;
+
     this.gameRef.on('value', (snapshot) => {
       const gameData = snapshot.val();
 
@@ -298,8 +300,19 @@ class AntBridgeGame {
       // Load game state if game is active
       if (gameData.status === 'active' || gameData.status === 'finished') {
         GameState.loadState(gameData);
-        this.showGameScreen();
-        UIRender.renderGame();
+
+        // Only initialize UI once
+        if (!gameInitialized) {
+          this.showGameScreen();
+          gameInitialized = true;
+        } else {
+          // Just update the rendering, don't re-initialize
+          UIRender.renderGame();
+          // Restore selection UI after rendering
+          if (window.eventHandlers) {
+            window.eventHandlers.updateSelectionUI();
+          }
+        }
       }
     });
   }
@@ -346,6 +359,9 @@ class AntBridgeGame {
       this.updateGameState(state);
     });
 
+    // Store reference for later use
+    window.eventHandlers = EventHandlers;
+
     // Render initial state
     UIRender.renderGame();
   }
@@ -353,7 +369,20 @@ class AntBridgeGame {
   // Update game state to Firebase
   async updateGameState(state) {
     try {
+      console.log('Updating Firebase with state:', state);
+
+      // Log specifically the constructionZone data being sent
+      if (state.players) {
+        Object.keys(state.players).forEach(playerId => {
+          if (state.players[playerId].constructionZone) {
+            console.log(`Sending to Firebase - player ${playerId} constructionZone:`,
+                       state.players[playerId].constructionZone);
+          }
+        });
+      }
+
       await this.gameRef.update(state);
+      console.log('Firebase update completed');
     } catch (error) {
       console.error('Error updating game state:', error);
     }

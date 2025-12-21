@@ -48,9 +48,9 @@ export const UIRender = {
         <div class="player-stats">
           <div>VP: <span class="vp">${vp}</span></div>
           <div>Resources: <span class="resources">${player.resources}</span></div>
-          <div>Deck: ${player.deck.length}</div>
-          <div>Hand: ${player.hand.length}</div>
-          <div>Discard: ${player.discard.length}</div>
+          <div>Deck: <span class="deck-count">${player.deck.length}</span></div>
+          <div>Hand: <span class="hand-count">${player.hand.length}</span></div>
+          <div>Discard: <span class="discard-count">${player.discard.length}</span></div>
         </div>
         <div class="construction-zone" id="construction-${player.id}">
           <h4>Construction Zone</h4>
@@ -64,27 +64,58 @@ export const UIRender = {
 
   // Render a player's construction zone
   renderPlayerConstruction(player) {
-    if (Object.keys(player.constructionZone).length === 0) {
+    console.log('Rendering construction zone for player:', player.id, 'Zone:', player.constructionZone);
+    console.log('typeof constructionZone:', typeof player.constructionZone);
+    console.log('Is Array?:', Array.isArray(player.constructionZone));
+
+    // Ensure constructionZone is an object
+    if (!player.constructionZone || typeof player.constructionZone !== 'object' || Array.isArray(player.constructionZone)) {
+      console.log('Construction zone is invalid type, showing empty message');
+      return '<p class="empty">No objectives in progress</p>';
+    }
+
+    const objectiveKeys = Object.keys(player.constructionZone);
+    console.log('Objective keys:', objectiveKeys);
+    console.log('Number of objectives in construction zone:', objectiveKeys.length);
+
+    if (objectiveKeys.length === 0) {
+      console.log('Construction zone is empty, showing empty message');
       return '<p class="empty">No objectives in progress</p>';
     }
 
     let html = '';
-    Object.entries(player.constructionZone).forEach(([objectiveId, ants]) => {
+    Object.entries(player.constructionZone).forEach(([objectiveId, antIds]) => {
+      console.log(`Rendering objective ${objectiveId}, ant IDs:`, antIds, 'Length:', antIds.length);
       const objective = GameState.getObjectiveById(objectiveId, this.constructionData);
       if (objective) {
         const isComplete = GameState.isObjectiveComplete(player.id, objectiveId, this.constructionData);
+        console.log(`Objective ${objective.name} complete status:`, isComplete);
+
+        // Look up card objects from IDs and calculate total defense
+        let totalDefense = 0;
+        const antCards = antIds.map(antId => {
+          const card = GameState.getCardById(antId, this.cardData);
+          if (card) {
+            totalDefense += card.defense || 0;
+          }
+          return card;
+        }).filter(card => card !== null);
+
         html += `
           <div class="construction-objective ${isComplete ? 'complete' : ''}">
             <div class="objective-name">${objective.name}</div>
-            <div class="objective-progress">${ants.length}/${objective.antsRequired}</div>
+            <div class="objective-progress">${antIds.length}/${objective.antsRequired} | 🛡️ ${totalDefense}</div>
             <div class="ants-on-objective">
-              ${ants.map(ant => `<span class="ant-chip">${ant.name}</span>`).join('')}
+              ${antCards.map(ant => `<span class="ant-chip">${ant.name}</span>`).join('')}
             </div>
           </div>
         `;
+      } else {
+        console.log(`Objective ${objectiveId} not found!`);
       }
     });
 
+    console.log('Final HTML output:', html);
     return html;
   },
 
@@ -95,10 +126,12 @@ export const UIRender = {
 
     tradeRowContainer.innerHTML = '<h3>Trade Row</h3>';
 
-    GameState.tradeRow.forEach(cardId => {
+    GameState.tradeRow.forEach((cardId, index) => {
       const card = GameState.getCardById(cardId, this.cardData);
       if (card) {
-        tradeRowContainer.appendChild(this.createCardElement(card, 'buy'));
+        const cardElement = this.createCardElement(card, 'buy');
+        cardElement.dataset.tradeIndex = index;  // Add unique index
+        tradeRowContainer.appendChild(cardElement);
       }
     });
   },
@@ -128,10 +161,12 @@ export const UIRender = {
 
     handContainer.innerHTML = '<h3>Your Hand</h3>';
 
-    currentPlayer.hand.forEach(cardId => {
+    currentPlayer.hand.forEach((cardId, index) => {
       const card = GameState.getCardById(cardId, this.cardData);
       if (card) {
-        handContainer.appendChild(this.createCardElement(card, 'play'));
+        const cardElement = this.createCardElement(card, 'play');
+        cardElement.dataset.handIndex = index;  // Add unique index
+        handContainer.appendChild(cardElement);
       }
     });
 
@@ -153,12 +188,13 @@ export const UIRender = {
     cardDiv.innerHTML = `
       <div class="card-header">
         <span class="card-name">${card.name}</span>
-        <span class="card-cost">${card.cost}</span>
+        <span class="card-cost">💰 ${card.cost}</span>
       </div>
       <div class="card-stats">
         <span class="attack">⚔️ ${card.attack}</span>
         <span class="defense">🛡️ ${card.defense}</span>
         ${card.vp > 0 ? `<span class="vp">★ ${card.vp}</span>` : ''}
+        ${card.resources > 0 ? `<span class="resources">💎 +${card.resources}</span>` : ''}
       </div>
       ${abilitiesHtml}
       <div class="card-description">${card.description}</div>

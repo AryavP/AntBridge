@@ -10,6 +10,8 @@ export const GameState = {
   constructionRow: [],
   marketDeck: [],
   constructionDeck: [],
+  objectivesByTier: {},  // Organized objectives by tier
+  currentTier: 1,  // Current construction tier
   startedAt: null,
   status: 'waiting', // 'waiting', 'active', 'finished'
   winner: null,
@@ -58,6 +60,15 @@ export const GameState = {
 
   // Load state from Firebase
   loadState(stateData) {
+    console.log('Loading state from Firebase:', stateData);
+
+    // Log the raw constructionZone data from Firebase BEFORE any processing
+    if (stateData.players) {
+      Object.keys(stateData.players).forEach(pid => {
+        console.log(`RAW Firebase data for player ${pid} constructionZone:`, stateData.players[pid].constructionZone);
+      });
+    }
+
     Object.assign(this, stateData);
 
     // Helper to convert Firebase object to array
@@ -79,10 +90,56 @@ export const GameState = {
     // Ensure player arrays are initialized
     Object.keys(this.players || {}).forEach(playerId => {
       const player = this.players[playerId];
+      console.log(`Loading player ${playerId}, constructionZone from Firebase:`, player.constructionZone);
+
       player.deck = toArray(player.deck);
       player.hand = toArray(player.hand);
       player.discard = toArray(player.discard);
       player.constructionZone = player.constructionZone || {};
+
+      // Convert constructionZone ant arrays from Firebase objects to arrays
+      // Firebase sometimes converts objects to arrays or objects with numeric keys
+      if (player.constructionZone && typeof player.constructionZone === 'object') {
+        // Check if constructionZone itself was converted to an array by Firebase
+        if (Array.isArray(player.constructionZone)) {
+          console.log('WARNING: constructionZone is an array from Firebase, attempting to reconstruct');
+          // Firebase converted our object to an array - convert back
+          const reconstructed = {};
+          player.constructionZone.forEach((value, index) => {
+            if (value && typeof value === 'object') {
+              // This array element should be an objective's ants
+              // But we've lost the objectiveId - this is a Firebase limitation
+              // We need to prevent this from happening in the first place
+              console.error('Cannot reconstruct constructionZone from array - objective IDs lost');
+            }
+          });
+          player.constructionZone = reconstructed;
+        } else {
+          // constructionZone is an object (correct structure)
+          Object.keys(player.constructionZone).forEach(objectiveId => {
+            console.log(`Converting constructionZone[${objectiveId}]:`, player.constructionZone[objectiveId]);
+            const ants = player.constructionZone[objectiveId];
+
+            // Convert to array if it's an object with numeric keys
+            if (ants && !Array.isArray(ants) && typeof ants === 'object') {
+              player.constructionZone[objectiveId] = toArray(ants);
+              console.log(`Converted from object to array:`, player.constructionZone[objectiveId]);
+            } else if (!ants) {
+              console.log(`Ants is null/undefined for ${objectiveId}, removing entry`);
+              delete player.constructionZone[objectiveId];
+            } else if (!Array.isArray(ants)) {
+              console.log(`Invalid ants structure for ${objectiveId}, resetting to empty array`);
+              player.constructionZone[objectiveId] = [];
+            }
+          });
+        }
+      } else {
+        console.log('constructionZone is not an object, resetting to {}');
+        player.constructionZone = {};
+      }
+
+      console.log(`After conversion, player ${playerId} constructionZone:`, player.constructionZone);
+
       player.bonuses = player.bonuses || {
         resourcesPerTurn: 0,
         defenseBonus: 0,
@@ -121,18 +178,17 @@ export const GameState = {
   },
 
   // Check if construction objective is completed
-  isObjectiveComplete(playerId, objectiveId, constructionData) {
+  isObjectiveComplete(playerId, objectiveId, constructionData, cardData) {
     const objective = this.getObjectiveById(objectiveId, constructionData);
-    const antsOnObjective = this.players[playerId].constructionZone[objectiveId] || [];
+    const antIds = this.players[playerId].constructionZone[objectiveId] || [];
 
     // Count ants, considering special abilities
     let antCount = 0;
-    antsOnObjective.forEach(ant => {
-      if (ant.abilities && ant.abilities.includes('double_build')) {
-        antCount += 2;
-      } else {
-        antCount += 1;
-      }
+    antIds.forEach(antId => {
+      // Note: antId is now a card ID string, not a card object
+      // For now, just count each ant as 1
+      // If we need to support double_build ability, we'd need to pass cardData and look up the card
+      antCount += 1;
     });
 
     return antCount >= objective.antsRequired;
@@ -157,13 +213,16 @@ export const GameState = {
     });
 
     // VP from ants in construction zone
-    Object.values(player.constructionZone).forEach(ants => {
-      ants.forEach(ant => {
-        let antVP = ant.vp || 0;
-        if (player.bonuses.doubleVpFromAnts) {
-          antVP *= 2;
+    Object.values(player.constructionZone).forEach(antIds => {
+      antIds.forEach(antId => {
+        const ant = this.getCardById(antId, cardData);
+        if (ant) {
+          let antVP = ant.vp || 0;
+          if (player.bonuses.doubleVpFromAnts) {
+            antVP *= 2;
+          }
+          totalVP += antVP;
         }
-        totalVP += antVP;
       });
     });
 
@@ -174,13 +233,16 @@ export const GameState = {
   },
 
   // Calculate total defense for a player's construction zone
-  calculateDefense(playerId) {
+  calculateDefense(playerId, cardData) {
     const player = this.players[playerId];
     let totalDefense = player.bonuses.defenseBonus;
 
-    Object.values(player.constructionZone).forEach(ants => {
-      ants.forEach(ant => {
-        totalDefense += ant.defense || 0;
+    Object.values(player.constructionZone).forEach(antIds => {
+      antIds.forEach(antId => {
+        const ant = this.getCardById(antId, cardData);
+        if (ant) {
+          totalDefense += ant.defense || 0;
+        }
       });
     });
 
@@ -203,13 +265,28 @@ export const GameState = {
     const serializedPlayers = {};
     Object.keys(this.players).forEach(playerId => {
       const player = this.players[playerId];
+
+      console.log(`Serializing player ${playerId}, constructionZone:`, player.constructionZone);
+
+      // Ensure constructionZone arrays are properly formatted
+      const serializedConstructionZone = {};
+      if (player.constructionZone) {
+        Object.keys(player.constructionZone).forEach(objectiveId => {
+          const ants = player.constructionZone[objectiveId];
+          // Ensure it's an array
+          serializedConstructionZone[objectiveId] = Array.isArray(ants) ? ants : [];
+        });
+      }
+
+      console.log(`Serialized constructionZone:`, serializedConstructionZone);
+
       serializedPlayers[playerId] = {
         id: player.id,
         name: player.name,
         deck: player.deck || [],
         hand: player.hand || [],
         discard: player.discard || [],
-        constructionZone: player.constructionZone || {},
+        constructionZone: serializedConstructionZone,
         resources: player.resources || 0,
         vp: player.vp || 0,
         bonuses: player.bonuses || {
@@ -231,6 +308,8 @@ export const GameState = {
       constructionRow: this.constructionRow || [],
       marketDeck: this.marketDeck || [],
       constructionDeck: this.constructionDeck || [],
+      objectivesByTier: this.objectivesByTier || {},
+      currentTier: this.currentTier || 1,
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

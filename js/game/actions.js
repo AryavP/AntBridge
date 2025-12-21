@@ -22,6 +22,11 @@ export const GameActions = {
 
     player.hand.splice(cardIndex, 1);
 
+    // Grant resources from card
+    if (card.resources) {
+      player.resources += card.resources;
+    }
+
     // Execute card abilities
     this.executeCardAbilities(playerId, card, cardData);
 
@@ -104,14 +109,23 @@ export const GameActions = {
 
     player.hand.splice(cardIndex, 1);
 
-    // Add to construction zone
+    // Grant resources from card
+    if (card.resources) {
+      player.resources += card.resources;
+    }
+
+    // Add to construction zone (store card ID, not the full card object)
     if (!player.constructionZone[objectiveId]) {
       player.constructionZone[objectiveId] = [];
     }
-    player.constructionZone[objectiveId].push(card);
+    player.constructionZone[objectiveId].push(cardId);
+
+    console.log(`Placed ${card.name} on ${objective.name}. Construction zone now has ${player.constructionZone[objectiveId].length} ants.`);
+    console.log('Construction zone:', player.constructionZone);
 
     // Check if objective is now complete
     if (GameState.isObjectiveComplete(playerId, objectiveId, constructionData)) {
+      console.log(`Objective ${objective.name} is complete!`);
       this.completeObjective(playerId, objectiveId, cardData, constructionData);
     }
 
@@ -124,6 +138,13 @@ export const GameActions = {
     const objective = GameState.getObjectiveById(objectiveId, constructionData);
 
     if (!objective) return;
+
+    // Scrap (permanently remove) all ants used in this construction
+    const antsToScrap = player.constructionZone[objectiveId] || [];
+    console.log(`Scrapping ${antsToScrap.length} ants from completed construction`);
+
+    // Remove the construction zone entry (ants are not returned to discard)
+    delete player.constructionZone[objectiveId];
 
     // Award VP
     player.vp += objective.vp;
@@ -177,6 +198,17 @@ export const GameActions = {
     const index = GameState.constructionRow.indexOf(objectiveId);
     if (index !== -1) {
       GameState.constructionRow.splice(index, 1);
+
+      // Check if we need to advance to next tier
+      if (GameState.constructionDeck.length === 0 && GameState.constructionRow.length === 0) {
+        // Current tier is exhausted, advance to next tier
+        GameState.currentTier += 1;
+        const nextTierObjectives = GameState.objectivesByTier[GameState.currentTier];
+        if (nextTierObjectives) {
+          GameState.constructionDeck = GameState.shuffle([...nextTierObjectives]);
+        }
+      }
+
       GameRules.fillConstructionRow();
     }
   },
@@ -234,7 +266,7 @@ export const GameActions = {
     });
 
     // Validate attack
-    const validation = GameRules.canAttack(attackerId, targetId, totalAttack);
+    const validation = GameRules.canAttack(attackerId, targetId, totalAttack, cardData);
     if (!validation.valid) {
       return { success: false, error: validation.reason };
     }
@@ -249,22 +281,22 @@ export const GameActions = {
     });
 
     // Attack succeeds - remove ants from target's construction
-    const antsToRemove = Math.floor((totalAttack - GameState.calculateDefense(targetId)) / 2);
+    const antsToRemove = Math.floor((totalAttack - GameState.calculateDefense(targetId, cardData)) / 2);
     let removed = 0;
 
     // Remove ants from construction zone
     Object.keys(target.constructionZone).forEach(objectiveId => {
       if (removed >= antsToRemove) return;
 
-      const ants = target.constructionZone[objectiveId];
-      while (ants.length > 0 && removed < antsToRemove) {
-        const removedAnt = ants.pop();
-        target.discard.push(removedAnt.id);
+      const antIds = target.constructionZone[objectiveId];
+      while (antIds.length > 0 && removed < antsToRemove) {
+        const removedAntId = antIds.pop();
+        target.discard.push(removedAntId);
         removed++;
       }
 
       // Clean up empty objectives
-      if (ants.length === 0) {
+      if (antIds.length === 0) {
         delete target.constructionZone[objectiveId];
       }
     });

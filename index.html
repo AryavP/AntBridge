@@ -95,12 +95,15 @@
 
                     <!-- Action Controls -->
                     <section class="action-controls">
-                        <div class="mode-buttons">
-                            <button id="play-mode-btn" class="btn mode-btn">Play Mode</button>
-                            <button id="build-mode-btn" class="btn mode-btn">Build Mode</button>
-                            <button id="attack-mode-btn" class="btn mode-btn">Attack Mode</button>
+                        <div id="selection-info" class="selection-info">
+                            <span id="target-info">Select an objective or trade card</span>
+                            <span id="selected-cards-info"></span>
                         </div>
-                        <button id="end-turn-btn" class="btn btn-primary btn-large">End Turn</button>
+                        <div class="action-buttons">
+                            <button id="resolve-btn" class="btn btn-success" style="display: none;">Resolve Action</button>
+                            <button id="clear-selection-btn" class="btn btn-secondary" style="display: none;">Clear Selection</button>
+                            <button id="end-turn-btn" class="btn btn-primary btn-large">End Turn</button>
+                        </div>
                     </section>
                 </main>
 

@@ -10,8 +10,10 @@ export const EventHandlers = {
   constructionData: null,
   currentPlayerId: null,
   updateCallback: null,
-  selectedCards: [],
-  actionMode: null, // 'play', 'attack', 'build'
+  selectedTarget: null,  // {type: 'construction'/'trade', objectiveId?}
+  selectedHandIndices: [],  // Indices of cards selected from hand
+  selectedTradeIndices: [],  // Indices of trade cards selected
+  initialized: false,  // Track if event listeners are attached
 
   // Initialize event handlers
   init(cardData, constructionData, playerId, updateCallback) {
@@ -19,241 +21,403 @@ export const EventHandlers = {
     this.constructionData = constructionData;
     this.currentPlayerId = playerId;
     this.updateCallback = updateCallback;
-    this.selectedCards = [];
-    this.actionMode = null;
 
-    this.attachEventListeners();
+    // Only attach event listeners once
+    if (!this.initialized) {
+      this.clearSelection();
+      this.attachEventListeners();
+      this.initialized = true;
+      console.log('Event listeners attached');
+    }
+  },
+
+  // Clear all selections
+  clearSelection() {
+    this.selectedTarget = null;
+    this.selectedHandIndices = [];
+    this.selectedTradeIndices = [];
+    this.updateSelectionUI();
   },
 
   // Attach all event listeners
   attachEventListeners() {
-    // Card clicks
+    // Delegate click events
     document.addEventListener('click', (e) => {
+      // Check if clicked element is a card
       const card = e.target.closest('.card');
+
       if (card) {
-        this.handleCardClick(card);
+        // Determine if it's in hand or trade row
+        const handContainer = document.getElementById('hand');
+        const tradeRowContainer = document.getElementById('trade-row');
+
+        if (handContainer && handContainer.contains(card)) {
+          this.handleHandCardClick(card);
+          return;
+        }
+
+        if (tradeRowContainer && tradeRowContainer.contains(card)) {
+          this.handleTradeCardClick(card);
+          return;
+        }
       }
 
+      // Construction objective
       const objective = e.target.closest('.objective');
       if (objective) {
         this.handleObjectiveClick(objective);
+        return;
+      }
+
+      // Resolve button
+      if (e.target.id === 'resolve-btn') {
+        this.handleResolve();
+        return;
+      }
+
+      // Clear selection button
+      if (e.target.id === 'clear-selection-btn') {
+        this.clearSelection();
+        return;
       }
 
       // End turn button
       if (e.target.id === 'end-turn-btn') {
         this.handleEndTurn();
-      }
-
-      // Action menu buttons
-      const actionBtn = e.target.closest('.action-btn');
-      if (actionBtn) {
-        this.handleActionButton(actionBtn);
+        return;
       }
     });
-
-    // Mode selection buttons
-    const playModeBtn = document.getElementById('play-mode-btn');
-    if (playModeBtn) {
-      playModeBtn.addEventListener('click', () => this.setActionMode('play'));
-    }
-
-    const attackModeBtn = document.getElementById('attack-mode-btn');
-    if (attackModeBtn) {
-      attackModeBtn.addEventListener('click', () => this.setActionMode('attack'));
-    }
-
-    const buildModeBtn = document.getElementById('build-mode-btn');
-    if (buildModeBtn) {
-      buildModeBtn.addEventListener('click', () => this.setActionMode('build'));
-    }
   },
 
-  // Set action mode
-  setActionMode(mode) {
-    this.actionMode = mode;
-    this.selectedCards = [];
-
-    // Update UI to show current mode
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-
-    const activeBtn = document.getElementById(`${mode}-mode-btn`);
-    if (activeBtn) {
-      activeBtn.classList.add('active');
-    }
-
-    UIRender.showMessage(`Mode: ${mode.toUpperCase()}`, 'info');
-  },
-
-  // Handle card click
-  handleCardClick(cardElement) {
+  // Handle clicking a card in hand
+  handleHandCardClick(cardElement) {
     if (GameState.currentPlayer !== this.currentPlayerId) {
       UIRender.showMessage("It's not your turn!", 'error');
       return;
     }
 
-    const cardId = cardElement.dataset.cardId;
-    const action = cardElement.dataset.action;
-    const card = GameState.getCardById(cardId, this.cardData);
+    const handIndex = parseInt(cardElement.dataset.handIndex);
 
-    if (!card) return;
-
-    if (action === 'buy') {
-      this.handleBuyCard(card);
-    } else if (action === 'play') {
-      this.handlePlayCard(card);
-    }
-  },
-
-  // Handle playing a card
-  handlePlayCard(card) {
-    if (this.actionMode === 'attack') {
-      // Add to selected cards for attack
-      if (!this.selectedCards.includes(card.id)) {
-        this.selectedCards.push(card.id);
-        UIRender.showMessage(`Selected ${card.name} for attack`, 'info');
-
-        // Show attack confirmation
-        const totalAttack = this.calculateSelectedAttack();
-        UIRender.showMessage(`Total attack: ${totalAttack}. Select target player to attack.`, 'info');
-      }
-    } else if (this.actionMode === 'build') {
-      // Show objectives to place ant on
-      this.showBuildTargets(card);
+    // Toggle selection
+    const idx = this.selectedHandIndices.indexOf(handIndex);
+    if (idx === -1) {
+      this.selectedHandIndices.push(handIndex);
+      cardElement.classList.add('selected');
     } else {
-      // Play card normally
-      const result = GameActions.playCard(this.currentPlayerId, card.id, this.cardData);
-
-      if (result.success) {
-        UIRender.showMessage(`Played ${card.name}`, 'success');
-        this.syncAndRender();
-      } else {
-        UIRender.showMessage(result.error, 'error');
-      }
+      this.selectedHandIndices.splice(idx, 1);
+      cardElement.classList.remove('selected');
     }
+
+    this.updateSelectionUI();
   },
 
-  // Handle buying a card
-  handleBuyCard(card) {
-    const result = GameActions.buyCard(this.currentPlayerId, card.id, this.cardData);
+  // Handle clicking a trade row card
+  handleTradeCardClick(cardElement) {
+    if (GameState.currentPlayer !== this.currentPlayerId) {
+      UIRender.showMessage("It's not your turn!", 'error');
+      return;
+    }
 
-    if (result.success) {
-      UIRender.showMessage(`Bought ${card.name} for ${card.cost} resources`, 'success');
-      this.syncAndRender();
+    const tradeIndex = parseInt(cardElement.dataset.tradeIndex);
+
+    // Toggle selection for multi-buy
+    const idx = this.selectedTradeIndices.indexOf(tradeIndex);
+    if (idx === -1) {
+      this.selectedTradeIndices.push(tradeIndex);
+      cardElement.classList.add('selected');
     } else {
-      UIRender.showMessage(result.error, 'error');
+      this.selectedTradeIndices.splice(idx, 1);
+      cardElement.classList.remove('selected');
     }
+
+    // Set as target if not already set
+    if (!this.selectedTarget || this.selectedTarget.type !== 'trade') {
+      this.selectedTarget = { type: 'trade' };
+    }
+
+    this.updateSelectionUI();
   },
 
-  // Handle objective click (for building)
+  // Handle clicking a construction objective
   handleObjectiveClick(objectiveElement) {
-    if (this.actionMode !== 'build') return;
-    if (this.selectedCards.length === 0) {
-      UIRender.showMessage('Select a card from your hand first', 'error');
+    if (GameState.currentPlayer !== this.currentPlayerId) {
+      UIRender.showMessage("It's not your turn!", 'error');
       return;
     }
 
     const objectiveId = objectiveElement.dataset.objectiveId;
-    const cardId = this.selectedCards[0]; // Take first selected card
 
-    const result = GameActions.placeAntOnConstruction(
-      this.currentPlayerId,
-      cardId,
-      objectiveId,
-      this.cardData,
-      this.constructionData
-    );
+    // Clear previous objective selection
+    document.querySelectorAll('.objective').forEach(el => el.classList.remove('selected'));
 
-    if (result.success) {
-      const card = GameState.getCardById(cardId, this.cardData);
-      UIRender.showMessage(`Placed ${card.name} on construction`, 'success');
-      this.selectedCards = [];
-      this.syncAndRender();
-    } else {
-      UIRender.showMessage(result.error, 'error');
-    }
+    // Set new target
+    this.selectedTarget = { type: 'construction', objectiveId };
+    this.selectedTradeIndices = []; // Clear trade selections
+    objectiveElement.classList.add('selected');
+
+    this.updateSelectionUI();
   },
 
-  // Show objectives that can receive the ant
-  showBuildTargets(card) {
-    if (!card.abilities || !card.abilities.includes('build')) {
-      UIRender.showMessage('This ant cannot build', 'error');
+  // Update selection UI
+  updateSelectionUI() {
+    const targetInfo = document.getElementById('target-info');
+    const selectedCardsInfo = document.getElementById('selected-cards-info');
+    const resolveBtn = document.getElementById('resolve-btn');
+    const clearBtn = document.getElementById('clear-selection-btn');
+
+    if (!targetInfo || !selectedCardsInfo || !resolveBtn || !clearBtn) return;
+
+    // Check if hand cards are selected without a target (play for resources)
+    if (this.selectedHandIndices.length > 0 && !this.selectedTarget) {
+      targetInfo.textContent = 'Playing cards for resources';
+      selectedCardsInfo.textContent = `Selected ${this.selectedHandIndices.length} card(s)`;
+      resolveBtn.style.display = 'inline-block';
+      clearBtn.style.display = 'inline-block';
+
+      // Update visual selection
+      document.querySelectorAll('.hand .card').forEach(el => {
+        const handIndex = parseInt(el.dataset.handIndex);
+        if (this.selectedHandIndices.includes(handIndex)) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
       return;
     }
 
-    this.selectedCards = [card.id];
-    UIRender.showMessage(`Selected ${card.name}. Click an objective to place it.`, 'info');
+    // Update target info
+    if (this.selectedTarget) {
+      if (this.selectedTarget.type === 'construction') {
+        const objective = GameState.getObjectiveById(this.selectedTarget.objectiveId, this.constructionData);
+        targetInfo.textContent = `Building: ${objective.name}`;
+        clearBtn.style.display = 'inline-block';
 
-    // Highlight available objectives
-    document.querySelectorAll('.objective').forEach(obj => {
-      obj.classList.add('selectable');
-    });
-  },
+        // Show resolve button if cards are selected
+        if (this.selectedHandIndices.length > 0) {
+          resolveBtn.style.display = 'inline-block';
+          selectedCardsInfo.textContent = `Selected ${this.selectedHandIndices.length} card(s)`;
+        } else {
+          resolveBtn.style.display = 'none';
+          selectedCardsInfo.textContent = 'Select cards from your hand';
+        }
+      } else if (this.selectedTarget.type === 'trade') {
+        // Calculate total cost of trade cards
+        const player = GameState.players[this.currentPlayerId];
+        let totalCost = 0;
+        this.selectedTradeIndices.forEach(idx => {
+          const cardId = GameState.tradeRow[idx];
+          const card = GameState.getCardById(cardId, this.cardData);
+          if (card) totalCost += card.cost;
+        });
 
-  // Calculate total attack from selected cards
-  calculateSelectedAttack() {
-    let total = 0;
-    this.selectedCards.forEach(cardId => {
-      const card = GameState.getCardById(cardId, this.cardData);
-      if (card) {
-        total += card.attack || 0;
+        // Calculate resources from selected hand cards
+        let handResources = 0;
+        this.selectedHandIndices.forEach(idx => {
+          const cardId = player.hand[idx];
+          const card = GameState.getCardById(cardId, this.cardData);
+          if (card) handResources += card.resources || 0;
+        });
+
+        const currentResources = player.resources;
+        const totalAfterPlaying = currentResources + handResources;
+
+        targetInfo.textContent = `Buying ${this.selectedTradeIndices.length} card(s) - Cost: ${totalCost}`;
+        selectedCardsInfo.textContent = `Playing ${this.selectedHandIndices.length} card(s) for ${handResources} resources (Total: ${totalAfterPlaying})`;
+        clearBtn.style.display = 'inline-block';
+
+        if (this.selectedTradeIndices.length > 0) {
+          resolveBtn.style.display = 'inline-block';
+        } else {
+          resolveBtn.style.display = 'none';
+        }
+      }
+    } else {
+      targetInfo.textContent = 'Select an objective or trade card';
+      selectedCardsInfo.textContent = '';
+      resolveBtn.style.display = 'none';
+      clearBtn.style.display = 'none';
+    }
+
+    // Update visual selection on hand cards
+    document.querySelectorAll('.hand .card').forEach(el => {
+      const handIndex = parseInt(el.dataset.handIndex);
+      if (this.selectedHandIndices.includes(handIndex)) {
+        el.classList.add('selected');
+      } else {
+        el.classList.remove('selected');
       }
     });
-    return total;
+
+    // Update visual selection on trade cards
+    document.querySelectorAll('.trade-row .card').forEach(el => {
+      const tradeIndex = parseInt(el.dataset.tradeIndex);
+      if (this.selectedTradeIndices.includes(tradeIndex)) {
+        el.classList.add('selected');
+      } else {
+        el.classList.remove('selected');
+      }
+    });
   },
 
-  // Handle action button clicks
-  handleActionButton(button) {
-    if (button.classList.contains('cancel')) {
-      UIRender.hideActionMenu();
-      this.selectedCards = [];
+  // Resolve the action
+  handleResolve() {
+    // Playing cards for resources (no target selected)
+    if (!this.selectedTarget && this.selectedHandIndices.length > 0) {
+      this.resolvePlayAction();
       return;
     }
 
-    const actionType = button.dataset.action;
-    const cardId = button.dataset.cardId;
-
-    // Handle different action types
-    switch (actionType) {
-      case 'play':
-        const card = GameState.getCardById(cardId, this.cardData);
-        this.handlePlayCard(card);
-        break;
-
-      case 'attack-player':
-        const targetId = button.dataset.targetId;
-        this.executeAttack(targetId);
-        break;
-    }
-
-    UIRender.hideActionMenu();
-  },
-
-  // Execute attack on target player
-  executeAttack(targetId) {
-    if (this.selectedCards.length === 0) {
-      UIRender.showMessage('No attack cards selected', 'error');
+    if (!this.selectedTarget) {
+      UIRender.showMessage('No target selected', 'error');
       return;
     }
 
-    const result = GameActions.attackPlayer(
-      this.currentPlayerId,
-      targetId,
-      this.selectedCards,
-      this.cardData
-    );
+    if (this.selectedTarget.type === 'construction') {
+      this.resolveBuildAction();
+    } else if (this.selectedTarget.type === 'trade') {
+      this.resolveBuyAction();
+    }
+  },
 
-    if (result.success) {
-      UIRender.showMessage(
-        `Attack successful! Removed ${result.antsRemoved} ants with ${result.attackPower} attack power`,
-        'success'
-      );
-      this.selectedCards = [];
-      this.actionMode = null;
+  // Resolve playing cards for resources
+  resolvePlayAction() {
+    if (this.selectedHandIndices.length === 0) {
+      UIRender.showMessage('No cards selected', 'error');
+      return;
+    }
+
+    const player = GameState.players[this.currentPlayerId];
+    const results = [];
+    let totalResources = 0;
+
+    // Sort descending to remove from end first
+    const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+
+    sortedIndices.forEach(index => {
+      const cardId = player.hand[index];
+      const card = GameState.getCardById(cardId, this.cardData);
+
+      const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
+
+      if (result.success) {
+        results.push(card.name);
+        totalResources += card.resources || 0;
+      }
+    });
+
+    if (results.length > 0) {
+      UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
+      this.clearSelection();
       this.syncAndRender();
-    } else {
-      UIRender.showMessage(result.error, 'error');
+    }
+  },
+
+  // Resolve building on construction
+  resolveBuildAction() {
+    if (this.selectedHandIndices.length === 0) {
+      UIRender.showMessage('Select cards from your hand to place on construction', 'error');
+      return;
+    }
+
+    const player = GameState.players[this.currentPlayerId];
+    const results = [];
+    const errors = [];
+
+    // Get card IDs from indices (sort descending to remove from end first)
+    const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+
+    sortedIndices.forEach(index => {
+      const cardId = player.hand[index];
+      const card = GameState.getCardById(cardId, this.cardData);
+
+      const result = GameActions.placeAntOnConstruction(
+        this.currentPlayerId,
+        cardId,
+        this.selectedTarget.objectiveId,
+        this.cardData,
+        this.constructionData
+      );
+
+      if (result.success) {
+        results.push(card.name);
+      } else {
+        errors.push(result.error);
+      }
+    });
+
+    if (results.length > 0) {
+      UIRender.showMessage(`Placed ${results.length} ant(s) on construction`, 'success');
+      this.clearSelection();
+      this.syncAndRender();
+    }
+
+    if (errors.length > 0) {
+      UIRender.showMessage(errors[0], 'error');
+    }
+  },
+
+  // Resolve buying cards
+  resolveBuyAction() {
+    if (this.selectedTradeIndices.length === 0) {
+      UIRender.showMessage('No cards selected to buy', 'error');
+      return;
+    }
+
+    const player = GameState.players[this.currentPlayerId];
+
+    // First, play selected hand cards for resources (sort descending)
+    let resourcesGained = 0;
+    if (this.selectedHandIndices.length > 0) {
+      const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+
+      sortedIndices.forEach(index => {
+        const cardId = player.hand[index];
+        const card = GameState.getCardById(cardId, this.cardData);
+
+        const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
+        if (result.success && card) {
+          resourcesGained += card.resources || 0;
+        }
+      });
+    }
+
+    // Calculate total cost of trade cards
+    let totalCost = 0;
+    const cardsToBuy = [];
+    this.selectedTradeIndices.forEach(idx => {
+      const cardId = GameState.tradeRow[idx];
+      const card = GameState.getCardById(cardId, this.cardData);
+      if (card) {
+        totalCost += card.cost;
+        cardsToBuy.push({cardId, card});
+      }
+    });
+
+    // Check if we have enough resources after playing cards
+    if (player.resources < totalCost) {
+      UIRender.showMessage(`Not enough resources! Need ${totalCost}, have ${player.resources} (gained ${resourcesGained})`, 'error');
+      this.clearSelection();
+      this.syncAndRender();
+      return;
+    }
+
+    // Buy all selected cards
+    const purchased = [];
+    for (const {cardId, card} of cardsToBuy) {
+      const result = GameActions.buyCard(this.currentPlayerId, cardId, this.cardData);
+      if (result.success) {
+        purchased.push(card.name);
+      }
+    }
+
+    if (purchased.length > 0) {
+      const message = resourcesGained > 0
+        ? `Played cards for ${resourcesGained} resources, then bought ${purchased.length} card(s) for ${totalCost} resources`
+        : `Bought ${purchased.length} card(s) for ${totalCost} resources`;
+      UIRender.showMessage(message, 'success');
+      this.clearSelection();
+      this.syncAndRender();
     }
   },
 
@@ -268,8 +432,7 @@ export const EventHandlers = {
 
     if (result.success) {
       UIRender.showMessage('Turn ended', 'success');
-      this.selectedCards = [];
-      this.actionMode = null;
+      this.clearSelection();
       this.syncAndRender();
     } else {
       UIRender.showMessage(result.error, 'error');
@@ -282,5 +445,6 @@ export const EventHandlers = {
       this.updateCallback(GameState.serialize());
     }
     UIRender.renderGame();
+    this.updateSelectionUI();
   }
 };

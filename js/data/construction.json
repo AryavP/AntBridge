@@ -1,0 +1,184 @@
+{
+  "objectives": [
+    {
+      "id": "foundation_tier1",
+      "name": "Foundation Stone",
+      "tier": 1,
+      "antsRequired": 2,
+      "vp": 1,
+      "reward": {
+        "type": "resources",
+        "amount": 1
+      },
+      "description": "Place 2 ants to complete. Gain 1 resource and 1 VP."
+    },
+    {
+      "id": "foundation_tier2",
+      "name": "Solid Foundation",
+      "tier": 1,
+      "antsRequired": 3,
+      "vp": 2,
+      "reward": {
+        "type": "draw",
+        "amount": 1
+      },
+      "description": "Place 3 ants to complete. Draw 1 card and gain 2 VP."
+    },
+    {
+      "id": "pillar_tier1",
+      "name": "Support Pillar",
+      "tier": 2,
+      "antsRequired": 4,
+      "vp": 3,
+      "reward": {
+        "type": "resources",
+        "amount": 2
+      },
+      "description": "Place 4 ants to complete. Gain 2 resources and 3 VP."
+    },
+    {
+      "id": "pillar_tier2",
+      "name": "Reinforced Pillar",
+      "tier": 2,
+      "antsRequired": 5,
+      "vp": 4,
+      "reward": {
+        "type": "draw",
+        "amount": 2
+      },
+      "description": "Place 5 ants to complete. Draw 2 cards and gain 4 VP."
+    },
+    {
+      "id": "arch_tier1",
+      "name": "Bridge Arch",
+      "tier": 3,
+      "antsRequired": 6,
+      "vp": 5,
+      "reward": {
+        "type": "card",
+        "cardId": "architect_ant"
+      },
+      "description": "Place 6 ants to complete. Gain Architect Ant and 5 VP."
+    },
+    {
+      "id": "arch_tier2",
+      "name": "Grand Arch",
+      "tier": 3,
+      "antsRequired": 7,
+      "vp": 6,
+      "reward": {
+        "type": "vp_multiplier",
+        "amount": 1
+      },
+      "description": "Place 7 ants to complete. Gain 1 VP per completed objective and 6 VP."
+    },
+    {
+      "id": "tower_tier1",
+      "name": "Observatory Tower",
+      "tier": 4,
+      "antsRequired": 8,
+      "vp": 7,
+      "reward": {
+        "type": "resources",
+        "amount": 3
+      },
+      "description": "Place 8 ants to complete. Gain 3 resources and 7 VP."
+    },
+    {
+      "id": "tower_tier2",
+      "name": "Sky Tower",
+      "tier": 4,
+      "antsRequired": 9,
+      "vp": 8,
+      "reward": {
+        "type": "card",
+        "cardId": "queen_ant"
+      },
+      "description": "Place 9 ants to complete. Gain Queen Ant and 8 VP."
+    },
+    {
+      "id": "span_tier1",
+      "name": "Bridge Span",
+      "tier": 5,
+      "antsRequired": 10,
+      "vp": 10,
+      "reward": {
+        "type": "draw",
+        "amount": 3
+      },
+      "description": "Place 10 ants to complete. Draw 3 cards and gain 10 VP."
+    },
+    {
+      "id": "span_tier2",
+      "name": "Moonwalk Span",
+      "tier": 5,
+      "antsRequired": 12,
+      "vp": 12,
+      "reward": {
+        "type": "vp_bonus",
+        "amount": 5
+      },
+      "description": "Place 12 ants to complete. Gain 5 bonus VP and 12 VP."
+    },
+    {
+      "id": "final_tier1",
+      "name": "Lunar Gateway",
+      "tier": 6,
+      "antsRequired": 15,
+      "vp": 15,
+      "reward": {
+        "type": "game_bonus",
+        "effect": "double_vp_from_ants"
+      },
+      "description": "Place 15 ants to complete. Double all VP from ant cards and gain 15 VP."
+    },
+    {
+      "id": "final_tier2",
+      "name": "Moon Landing",
+      "tier": 6,
+      "antsRequired": 20,
+      "vp": 20,
+      "reward": {
+        "type": "instant_win",
+        "effect": "win_condition"
+      },
+      "description": "Place 20 ants to complete. WIN THE GAME! Also gain 20 VP."
+    },
+    {
+      "id": "cable_support",
+      "name": "Cable Support",
+      "tier": 2,
+      "antsRequired": 4,
+      "vp": 3,
+      "reward": {
+        "type": "defense",
+        "amount": 2
+      },
+      "description": "Place 4 ants to complete. All ants on construction gain +2 defense and 3 VP."
+    },
+    {
+      "id": "supply_depot",
+      "name": "Supply Depot",
+      "tier": 3,
+      "antsRequired": 5,
+      "vp": 4,
+      "reward": {
+        "type": "resources_per_turn",
+        "amount": 1
+      },
+      "description": "Place 5 ants to complete. Gain 1 resource at start of each turn and 4 VP."
+    },
+    {
+      "id": "barracks",
+      "name": "Ant Barracks",
+      "tier": 3,
+      "antsRequired": 6,
+      "vp": 4,
+      "reward": {
+        "type": "card",
+        "cardId": "elite_soldier"
+      },
+      "description": "Place 6 ants to complete. Gain Elite Soldier Ant and 4 VP."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "starterDeck": [
+    "worker_ant",
+    "worker_ant",
+    "worker_ant",
+    "worker_ant",
+    "worker_ant",
+    "messenger_ant",
+    "messenger_ant",
+    "scout_ant",
+    "scout_ant",
+    "soldier_ant"
+  ],
+  "description": "Each player starts with 10 cards: 5 Worker Ants (for building), 2 Messenger Ants (for drawing cards), 2 Scout Ants (for deck manipulation), and 1 Soldier Ant (for basic combat)."
+}

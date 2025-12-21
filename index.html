@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ant Bridge - Build a Bridge to the Moon</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="screen">
+        <div class="loading-content">
+            <h1>Ant Bridge</h1>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message" class="error-overlay" style="display: none;"></div>
+
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen" style="display: none;">
+        <div class="lobby-container">
+            <h1>🐜 Ant Bridge 🌙</h1>
+            <p class="tagline">Build a colony and construct a bridge to the moon!</p>
+
+            <div class="lobby-form">
+                <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20">
+
+                <div class="lobby-actions">
+                    <div class="create-game">
+                        <h3>Create New Game</h3>
+                        <button id="create-game-btn" class="btn btn-primary">Create Game</button>
+                    </div>
+
+                    <div class="join-game">
+                        <h3>Join Existing Game</h3>
+                        <input type="text" id="game-id-input" placeholder="Enter Game ID" maxlength="6">
+                        <button id="join-game-btn" class="btn btn-secondary">Join Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiting Room -->
+    <div id="waiting-room" class="screen" style="display: none;">
+        <div class="waiting-container">
+            <h1>Waiting for Players</h1>
+            <h2 id="game-id-display" class="game-id"></h2>
+            <p class="instruction">Share this Game ID with other players</p>
+
+            <div id="players-list" class="players-list"></div>
+
+            <div class="waiting-actions">
+                <button id="ready-btn" class="btn btn-primary">Ready</button>
+                <button id="start-game-btn" class="btn btn-success" style="display: none;">Start Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen" style="display: none;">
+        <div class="game-container">
+            <!-- Header -->
+            <header class="game-header">
+                <h1>🐜 Ant Bridge 🌙</h1>
+                <div id="game-info"></div>
+            </header>
+
+            <!-- Main Game Area -->
+            <div class="game-main">
+                <!-- Left Sidebar - Players -->
+                <aside class="players-sidebar">
+                    <h2>Players</h2>
+                    <div id="players-container"></div>
+                </aside>
+
+                <!-- Center - Game Board -->
+                <main class="game-board">
+                    <!-- Construction Row -->
+                    <section id="construction-row" class="construction-row">
+                        <h3>Construction Objectives</h3>
+                    </section>
+
+                    <!-- Trade Row -->
+                    <section id="trade-row" class="trade-row">
+                        <h3>Trade Row</h3>
+                    </section>
+
+                    <!-- Player Hand -->
+                    <section id="hand" class="hand">
+                        <h3>Your Hand</h3>
+                    </section>
+
+                    <!-- Action Controls -->
+                    <section class="action-controls">
+                        <div class="mode-buttons">
+                            <button id="play-mode-btn" class="btn mode-btn">Play Mode</button>
+                            <button id="build-mode-btn" class="btn mode-btn">Build Mode</button>
+                            <button id="attack-mode-btn" class="btn mode-btn">Attack Mode</button>
+                        </div>
+                        <button id="end-turn-btn" class="btn btn-primary btn-large">End Turn</button>
+                    </section>
+                </main>
+
+                <!-- Right Sidebar - Messages -->
+                <aside class="messages-sidebar">
+                    <h2>Messages</h2>
+                    <div id="messages"></div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Menu (Modal) -->
+    <div id="action-menu" class="modal" style="display: none;">
+        <div class="modal-backdrop"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Game Scripts (as ES6 modules) -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

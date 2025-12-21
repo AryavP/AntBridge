@@ -1,0 +1,206 @@
+// Game Rules and Mechanics
+// Handles core game logic, turn phases, card drawing, win conditions, etc.
+
+import { GameState } from './state.js';
+
+export const GameRules = {
+  HAND_SIZE: 5,
+  TRADE_ROW_SIZE: 5,
+  CONSTRUCTION_ROW_SIZE: 3,
+
+  // Initialize game with starter decks and market
+  setupGame(cardData, starterDeckData, constructionData) {
+    // Give each player their starter deck
+    Object.keys(GameState.players).forEach(playerId => {
+      const player = GameState.players[playerId];
+      player.deck = GameState.shuffle([...starterDeckData.starterDeck]);
+      player.hand = [];
+      player.discard = [];
+      player.resources = 0;
+      player.vp = 0;
+    });
+
+    // Create market deck (all available cards)
+    GameState.marketDeck = GameState.shuffle([
+      ...this.createMarketPool(cardData)
+    ]);
+
+    // Create construction deck (shuffle objectives)
+    GameState.constructionDeck = GameState.shuffle([
+      ...constructionData.objectives.map(obj => obj.id)
+    ]);
+
+    // Fill trade row and construction row
+    this.fillTradeRow();
+    this.fillConstructionRow();
+
+    // Each player draws starting hand
+    Object.keys(GameState.players).forEach(playerId => {
+      this.drawCards(playerId, this.HAND_SIZE);
+    });
+
+    GameState.status = 'active';
+    GameState.startedAt = Date.now();
+  },
+
+  // Create pool of cards for market (multiple copies of each card)
+  createMarketPool(cardData) {
+    const pool = [];
+    cardData.ants.forEach(card => {
+      // Determine quantity based on cost
+      let quantity = 5; // default
+      if (card.cost <= 2) quantity = 8;
+      if (card.cost >= 6) quantity = 3;
+
+      for (let i = 0; i < quantity; i++) {
+        pool.push(card.id);
+      }
+    });
+    return pool;
+  },
+
+  // Fill trade row with cards from market deck
+  fillTradeRow() {
+    while (GameState.tradeRow.length < this.TRADE_ROW_SIZE && GameState.marketDeck.length > 0) {
+      GameState.tradeRow.push(GameState.marketDeck.pop());
+    }
+  },
+
+  // Fill construction row with objectives
+  fillConstructionRow() {
+    while (GameState.constructionRow.length < this.CONSTRUCTION_ROW_SIZE && GameState.constructionDeck.length > 0) {
+      GameState.constructionRow.push(GameState.constructionDeck.pop());
+    }
+  },
+
+  // Draw cards for a player
+  drawCards(playerId, count) {
+    const player = GameState.players[playerId];
+
+    for (let i = 0; i < count; i++) {
+      // If deck is empty, shuffle discard into deck
+      if (player.deck.length === 0) {
+        if (player.discard.length === 0) {
+          break; // No cards to draw
+        }
+        player.deck = GameState.shuffle([...player.discard]);
+        player.discard = [];
+      }
+
+      // Draw card
+      if (player.deck.length > 0) {
+        player.hand.push(player.deck.pop());
+      }
+    }
+  },
+
+  // Start of turn
+  startTurn(playerId) {
+    const player = GameState.players[playerId];
+
+    // Gain resources per turn bonus
+    player.resources += player.bonuses.resourcesPerTurn;
+
+    GameState.turnPhase = 'action';
+  },
+
+  // End of turn - discard hand and draw new cards
+  endTurn(playerId) {
+    const player = GameState.players[playerId];
+
+    // Discard entire hand
+    player.discard.push(...player.hand);
+    player.hand = [];
+
+    // Draw new hand
+    this.drawCards(playerId, this.HAND_SIZE);
+
+    // Move to next player
+    GameState.nextPlayer();
+
+    // Start next turn
+    this.startTurn(GameState.currentPlayer);
+
+    // Check if game should end
+    this.checkEndGame();
+  },
+
+  // Check if game has ended
+  checkEndGame() {
+    // Game ends when construction deck is exhausted
+    if (GameState.constructionDeck.length === 0 && GameState.constructionRow.length === 0) {
+      this.endGame();
+    }
+
+    // Check for instant win condition
+    Object.keys(GameState.players).forEach(playerId => {
+      const player = GameState.players[playerId];
+      Object.keys(player.constructionZone).forEach(objectiveId => {
+        // Check if this objective has instant win
+        // This would be checked in actions when completing an objective
+      });
+    });
+  },
+
+  // End game and determine winner
+  endGame(cardData, constructionData) {
+    GameState.status = 'finished';
+
+    // Calculate final VP for all players
+    let highestVP = -1;
+    let winnerId = null;
+
+    Object.keys(GameState.players).forEach(playerId => {
+      const vp = GameState.calculateVP(playerId, cardData, constructionData);
+      if (vp > highestVP) {
+        highestVP = vp;
+        winnerId = playerId;
+      }
+    });
+
+    GameState.winner = winnerId;
+  },
+
+  // Check if player can afford a card
+  canAffordCard(playerId, cardCost) {
+    return GameState.players[playerId].resources >= cardCost;
+  },
+
+  // Validate if a card can be played
+  canPlayCard(playerId, cardId, cardData) {
+    const player = GameState.players[playerId];
+    return player.hand.includes(cardId);
+  },
+
+  // Validate if an ant can be placed on construction objective
+  canPlaceOnConstruction(playerId, antCard, objectiveId) {
+    const player = GameState.players[playerId];
+
+    // Check if ant has build ability
+    if (!antCard.abilities || !antCard.abilities.includes('build')) {
+      return false;
+    }
+
+    // Check if objective is in construction row
+    if (!GameState.constructionRow.includes(objectiveId)) {
+      return false;
+    }
+
+    return true;
+  },
+
+  // Validate attack
+  canAttack(attackerId, targetId, attackPower) {
+    if (attackerId === targetId) {
+      return { valid: false, reason: "Cannot attack yourself" };
+    }
+
+    const targetDefense = GameState.calculateDefense(targetId);
+
+    if (attackPower <= targetDefense) {
+      return { valid: false, reason: `Attack power (${attackPower}) must exceed defense (${targetDefense})` };
+    }
+
+    return { valid: true };
+  }
+};

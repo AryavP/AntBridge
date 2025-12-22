@@ -348,6 +348,40 @@ body {
     font-size: 10px;
 }
 
+/* Completed Objectives Section */
+.completed-objectives {
+    margin-bottom: 12px;
+}
+
+.completed-objectives h4 {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.completed-objective {
+    background: #c8e6c9;
+    border: 2px solid #4caf50;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.completed-objective .objective-name {
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+.completed-objective .objective-vp {
+    color: #f57c00;
+    font-weight: bold;
+    font-size: 14px;
+}
+
 /* Game Board */
 .game-board {
     display: flex;

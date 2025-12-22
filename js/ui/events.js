@@ -428,7 +428,7 @@ export const EventHandlers = {
       return;
     }
 
-    const result = GameActions.endTurn(this.currentPlayerId);
+    const result = GameActions.endTurn(this.currentPlayerId, this.cardData, this.constructionData);
 
     if (result.success) {
       UIRender.showMessage('Turn ended', 'success');

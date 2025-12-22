@@ -113,6 +113,9 @@ export const GameRules = {
   startTurn(playerId) {
     const player = GameState.players[playerId];
 
+    // Note: Objective scoring happens in endTurn (of the previous player)
+    // right before calling nextPlayer/startTurn
+
     // Gain resources per turn bonus
     player.resources += player.bonuses.resourcesPerTurn;
 

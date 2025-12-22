@@ -52,14 +52,54 @@ export const UIRender = {
           <div>Hand: <span class="hand-count">${player.hand.length}</span></div>
           <div>Discard: <span class="discard-count">${player.discard.length}</span></div>
         </div>
+        <div class="completed-objectives" id="completed-${player.id}">
+          <h4>Scored Objectives</h4>
+          ${this.renderCompletedObjectives(player)}
+        </div>
         <div class="construction-zone" id="construction-${player.id}">
-          <h4>Construction Zone</h4>
+          <h4>Construction Zone (In Progress)</h4>
           ${this.renderPlayerConstruction(player)}
         </div>
       `;
 
       playersContainer.appendChild(playerDiv);
     });
+  },
+
+  // Render a player's completed (scored) objectives
+  renderCompletedObjectives(player) {
+    console.log('Rendering completed objectives for player:', player.id);
+    console.log('completedObjectives:', player.completedObjectives);
+
+    if (!player.completedObjectives || player.completedObjectives.length === 0) {
+      console.log('No completed objectives, showing empty message');
+      return '<p class="empty">No objectives scored yet</p>';
+    }
+
+    let html = '';
+    player.completedObjectives.forEach(objectiveId => {
+      const objective = GameState.getObjectiveById(objectiveId, this.constructionData);
+      console.log(`Rendering completed objective ${objectiveId}:`, objective);
+      if (objective) {
+        const rewardText = this.formatReward(objective.reward);
+
+        html += `
+          <div class="construction-objective complete scored">
+            <div class="objective-name">${objective.name}</div>
+            <div class="objective-progress">COMPLETED | ★ ${objective.vp}</div>
+            <div class="objective-requirement">
+              Required: ${objective.antsRequired} ants
+            </div>
+            <div class="objective-reward">
+              Reward: ${rewardText}
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    console.log('Completed objectives HTML:', html);
+    return html;
   },
 
   // Render a player's construction zone

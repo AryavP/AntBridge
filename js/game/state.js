@@ -25,6 +25,7 @@ export const GameState = {
       hand: [],
       discard: [],
       constructionZone: {}, // Objective ID -> array of ants placed on it
+      completedObjectives: [], // Array of objective IDs that this player has scored
       resources: 0,
       vp: 0,
       bonuses: {
@@ -96,6 +97,7 @@ export const GameState = {
       player.hand = toArray(player.hand);
       player.discard = toArray(player.discard);
       player.constructionZone = player.constructionZone || {};
+      player.completedObjectives = toArray(player.completedObjectives);
 
       // Convert constructionZone ant arrays from Firebase objects to arrays
       // Firebase sometimes converts objects to arrays or objects with numeric keys
@@ -287,6 +289,7 @@ export const GameState = {
         hand: player.hand || [],
         discard: player.discard || [],
         constructionZone: serializedConstructionZone,
+        completedObjectives: player.completedObjectives || [],
         resources: player.resources || 0,
         vp: player.vp || 0,
         bonuses: player.bonuses || {

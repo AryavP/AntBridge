@@ -123,11 +123,8 @@ export const GameActions = {
     console.log(`Placed ${card.name} on ${objective.name}. Construction zone now has ${player.constructionZone[objectiveId].length} ants.`);
     console.log('Construction zone:', player.constructionZone);
 
-    // Check if objective is now complete
-    if (GameState.isObjectiveComplete(playerId, objectiveId, constructionData)) {
-      console.log(`Objective ${objective.name} is complete!`);
-      this.completeObjective(playerId, objectiveId, cardData, constructionData);
-    }
+    // Don't auto-complete - objectives will be scored at the start of the builder's next turn
+    // This gives other players a chance to attack the objective
 
     return { success: true };
   },
@@ -143,8 +140,13 @@ export const GameActions = {
     const antsToScrap = player.constructionZone[objectiveId] || [];
     console.log(`Scrapping ${antsToScrap.length} ants from completed construction`);
 
-    // Remove the construction zone entry (ants are not returned to discard)
+    // Remove the construction zone entry (ants are not returned to discard, they're scrapped)
     delete player.constructionZone[objectiveId];
+
+    // Add to completed objectives (so it shows as scored under the player's name)
+    if (!player.completedObjectives.includes(objectiveId)) {
+      player.completedObjectives.push(objectiveId);
+    }
 
     // Award VP
     player.vp += objective.vp;
@@ -319,13 +321,39 @@ export const GameActions = {
     return { success: true, antsRemoved: removed, attackPower: totalAttack };
   },
 
+  // Score any completable objectives for the next player
+  scorePlayerObjectives(playerId, cardData, constructionData) {
+    const player = GameState.players[playerId];
+    const objectivesToScore = [];
+
+    // Check which objectives can be scored
+    Object.keys(player.constructionZone).forEach(objectiveId => {
+      if (GameState.isObjectiveComplete(playerId, objectiveId, constructionData, cardData)) {
+        objectivesToScore.push(objectiveId);
+      }
+    });
+
+    // Score all completable objectives
+    objectivesToScore.forEach(objectiveId => {
+      console.log(`Scoring objective ${objectiveId} for player ${playerId}`);
+      this.completeObjective(playerId, objectiveId, cardData, constructionData);
+    });
+
+    return { scored: objectivesToScore.length };
+  },
+
   // End current player's turn
-  endTurn(playerId) {
+  endTurn(playerId, cardData, constructionData) {
     if (GameState.currentPlayer !== playerId) {
       return { success: false, error: "Not your turn" };
     }
 
+    // End the turn (move to next player)
     GameRules.endTurn(playerId);
+
+    // Score objectives for the player whose turn it now is
+    // (This gives other players a chance to attack objectives before they score)
+    this.scorePlayerObjectives(GameState.currentPlayer, cardData, constructionData);
 
     return { success: true };
   }

@@ -109,10 +109,8 @@ export const GameActions = {
 
     player.hand.splice(cardIndex, 1);
 
-    // Grant resources from card
-    if (card.resources) {
-      player.resources += card.resources;
-    }
+    // Don't grant resources when placing on construction
+    // Resources are only granted when playing cards explicitly for resources
 
     // Add to construction zone (store card ID, not the full card object)
     if (!player.constructionZone[objectiveId]) {

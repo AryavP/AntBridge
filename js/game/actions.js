@@ -96,6 +96,17 @@ export const GameActions = {
       return { success: false, error: "Card or objective not found" };
     }
 
+    // Check if another player is already building this objective
+    const claimedByOther = Object.keys(GameState.players).find(otherPlayerId => {
+      if (otherPlayerId === playerId) return false; // Skip current player
+      return GameState.players[otherPlayerId].constructionZone[objectiveId] !== undefined;
+    });
+
+    if (claimedByOther) {
+      const claimingPlayer = GameState.players[claimedByOther];
+      return { success: false, error: `${claimingPlayer.name} is already building this objective!` };
+    }
+
     // Validate placement
     if (!GameRules.canPlaceOnConstruction(playerId, card, objectiveId)) {
       return { success: false, error: "Cannot place this ant on construction" };
@@ -198,19 +209,26 @@ export const GameActions = {
     const index = GameState.constructionRow.indexOf(objectiveId);
     if (index !== -1) {
       GameState.constructionRow.splice(index, 1);
-
-      // Check if we need to advance to next tier
-      if (GameState.constructionDeck.length === 0 && GameState.constructionRow.length === 0) {
-        // Current tier is exhausted, advance to next tier
-        GameState.currentTier += 1;
-        const nextTierObjectives = GameState.objectivesByTier[GameState.currentTier];
-        if (nextTierObjectives) {
-          GameState.constructionDeck = GameState.shuffle([...nextTierObjectives]);
-        }
-      }
-
-      GameRules.fillConstructionRow();
     }
+
+    // Also remove from construction deck if it's still there
+    const deckIndex = GameState.constructionDeck.indexOf(objectiveId);
+    if (deckIndex !== -1) {
+      GameState.constructionDeck.splice(deckIndex, 1);
+    }
+
+    // Check if we need to advance to next tier
+    if (GameState.constructionDeck.length === 0 && GameState.constructionRow.length === 0) {
+      // Current tier is exhausted, advance to next tier
+      GameState.currentTier += 1;
+      const nextTierObjectives = GameState.objectivesByTier[GameState.currentTier];
+      if (nextTierObjectives) {
+        GameState.constructionDeck = GameState.shuffle([...nextTierObjectives]);
+      }
+    }
+
+    // Fill construction row with a new objective
+    GameRules.fillConstructionRow();
   },
 
   // Buy a card from trade row
@@ -280,26 +298,41 @@ export const GameActions = {
       }
     });
 
-    // Attack succeeds - remove ants from target's construction
-    const antsToRemove = Math.floor((totalAttack - GameState.calculateDefense(targetId, cardData)) / 2);
-    let removed = 0;
+    // Attack succeeds if attack > defense - destroy one construction objective
+    const targetDefense = GameState.calculateDefense(targetId, cardData);
 
-    // Remove ants from construction zone
+    if (totalAttack <= targetDefense) {
+      return { success: false, error: `Attack failed! Need more than ${targetDefense} attack power.` };
+    }
+
+    // Find the objective with the most ants (most progress) to destroy
+    let targetObjectiveId = null;
+    let maxAnts = 0;
+
     Object.keys(target.constructionZone).forEach(objectiveId => {
-      if (removed >= antsToRemove) return;
-
       const antIds = target.constructionZone[objectiveId];
-      while (antIds.length > 0 && removed < antsToRemove) {
-        const removedAntId = antIds.pop();
-        target.discard.push(removedAntId);
-        removed++;
-      }
-
-      // Clean up empty objectives
-      if (antIds.length === 0) {
-        delete target.constructionZone[objectiveId];
+      if (antIds.length > maxAnts) {
+        maxAnts = antIds.length;
+        targetObjectiveId = objectiveId;
       }
     });
+
+    // If no objectives in construction, attack fails
+    if (!targetObjectiveId) {
+      return { success: false, error: `${target.name} has no objectives to attack!` };
+    }
+
+    // Destroy the objective - return all ants to discard
+    const destroyedAnts = target.constructionZone[targetObjectiveId];
+    destroyedAnts.forEach(antId => {
+      target.discard.push(antId);
+    });
+
+    const removed = destroyedAnts.length;
+    delete target.constructionZone[targetObjectiveId];
+
+    // Award VP to attacker for successful attack
+    attacker.vp += 1;
 
     // Execute special attack abilities
     attackCards.forEach(card => {
@@ -316,7 +349,12 @@ export const GameActions = {
       }
     });
 
-    return { success: true, antsRemoved: removed, attackPower: totalAttack };
+    return {
+      success: true,
+      antsRemoved: removed,
+      attackPower: totalAttack,
+      objectiveDestroyed: targetObjectiveId
+    };
   },
 
   // Score any completable objectives for the next player

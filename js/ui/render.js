@@ -186,7 +186,26 @@ export const UIRender = {
     GameState.constructionRow.forEach(objectiveId => {
       const objective = GameState.getObjectiveById(objectiveId, this.constructionData);
       if (objective) {
-        constructionRowContainer.appendChild(this.createObjectiveElement(objective));
+        // Check if any player is building this objective
+        let claimedBy = null;
+        Object.values(GameState.players).forEach(player => {
+          if (player.constructionZone[objectiveId]) {
+            claimedBy = player;
+          }
+        });
+
+        const objElement = this.createObjectiveElement(objective);
+
+        // Add visual indicator if claimed
+        if (claimedBy) {
+          objElement.classList.add('claimed');
+          const claimBadge = document.createElement('div');
+          claimBadge.className = 'claim-badge';
+          claimBadge.textContent = `Building: ${claimedBy.name}`;
+          objElement.appendChild(claimBadge);
+        }
+
+        constructionRowContainer.appendChild(objElement);
       }
     });
   },

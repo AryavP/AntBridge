@@ -62,11 +62,22 @@ export const EventHandlers = {
         }
       }
 
-      // Construction objective
+      // Construction objective (in construction row - to build on)
       const objective = e.target.closest('.objective');
       if (objective) {
         this.handleObjectiveClick(objective);
         return;
+      }
+
+      // Player's construction zone (to attack)
+      const playerDiv = e.target.closest('.player');
+      if (playerDiv) {
+        const playerId = playerDiv.dataset.playerId;
+        // Only allow attacking other players
+        if (playerId && playerId !== this.currentPlayerId) {
+          this.handlePlayerClick(playerId);
+          return;
+        }
       }
 
       // Resolve button
@@ -149,11 +160,36 @@ export const EventHandlers = {
 
     // Clear previous objective selection
     document.querySelectorAll('.objective').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.player').forEach(el => el.classList.remove('attack-target'));
 
     // Set new target
     this.selectedTarget = { type: 'construction', objectiveId };
     this.selectedTradeIndices = []; // Clear trade selections
     objectiveElement.classList.add('selected');
+
+    this.updateSelectionUI();
+  },
+
+  // Handle clicking a player (to attack)
+  handlePlayerClick(targetPlayerId) {
+    if (GameState.currentPlayer !== this.currentPlayerId) {
+      UIRender.showMessage("It's not your turn!", 'error');
+      return;
+    }
+
+    // Clear previous selections
+    document.querySelectorAll('.objective').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.player').forEach(el => el.classList.remove('attack-target'));
+    this.selectedTradeIndices = []; // Clear trade selections
+
+    // Set attack target
+    this.selectedTarget = { type: 'attack', targetPlayerId };
+
+    // Highlight the targeted player
+    const targetDiv = document.querySelector(`.player[data-player-id="${targetPlayerId}"]`);
+    if (targetDiv) {
+      targetDiv.classList.add('attack-target');
+    }
 
     this.updateSelectionUI();
   },
@@ -200,6 +236,28 @@ export const EventHandlers = {
         } else {
           resolveBtn.style.display = 'none';
           selectedCardsInfo.textContent = 'Select cards from your hand';
+        }
+      } else if (this.selectedTarget.type === 'attack') {
+        const targetPlayer = GameState.players[this.selectedTarget.targetPlayerId];
+        targetInfo.textContent = `Attacking: ${targetPlayer.name}`;
+        clearBtn.style.display = 'inline-block';
+
+        if (this.selectedHandIndices.length > 0) {
+          // Calculate total attack power
+          const player = GameState.players[this.currentPlayerId];
+          let totalAttack = 0;
+          this.selectedHandIndices.forEach(idx => {
+            const cardId = player.hand[idx];
+            const card = GameState.getCardById(cardId, this.cardData);
+            if (card) totalAttack += card.attack || 0;
+          });
+
+          const targetDefense = GameState.calculateDefense(this.selectedTarget.targetPlayerId, this.cardData);
+          resolveBtn.style.display = 'inline-block';
+          selectedCardsInfo.textContent = `Attack: ${totalAttack} vs Defense: ${targetDefense}`;
+        } else {
+          resolveBtn.style.display = 'none';
+          selectedCardsInfo.textContent = 'Select cards to attack with';
         }
       } else if (this.selectedTarget.type === 'trade') {
         // Calculate total cost of trade cards
@@ -277,6 +335,8 @@ export const EventHandlers = {
       this.resolveBuildAction();
     } else if (this.selectedTarget.type === 'trade') {
       this.resolveBuyAction();
+    } else if (this.selectedTarget.type === 'attack') {
+      this.resolveAttackAction();
     }
   },
 
@@ -354,6 +414,39 @@ export const EventHandlers = {
 
     if (errors.length > 0) {
       UIRender.showMessage(errors[0], 'error');
+    }
+  },
+
+  // Resolve attack action
+  resolveAttackAction() {
+    if (this.selectedHandIndices.length === 0) {
+      UIRender.showMessage('Select cards to attack with', 'error');
+      return;
+    }
+
+    const player = GameState.players[this.currentPlayerId];
+
+    // Get card IDs from indices
+    const cardIds = this.selectedHandIndices.map(idx => player.hand[idx]);
+
+    // Execute attack
+    const result = GameActions.attackPlayer(
+      this.currentPlayerId,
+      this.selectedTarget.targetPlayerId,
+      cardIds,
+      this.cardData
+    );
+
+    if (result.success) {
+      const objective = GameState.getObjectiveById(result.objectiveDestroyed, this.constructionData);
+      UIRender.showMessage(
+        `Attack successful! Destroyed "${objective.name}" - ${result.antsRemoved} ant(s) returned to discard. +1 VP!`,
+        'success'
+      );
+      this.clearSelection();
+      this.syncAndRender();
+    } else {
+      UIRender.showMessage(result.error, 'error');
     }
   },
 

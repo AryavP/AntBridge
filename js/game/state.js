@@ -287,6 +287,7 @@ export const GameState = {
       objectivesByTier: this.objectivesByTier || {},
       currentTier: this.currentTier || 1,
       pendingScout: this.pendingScout || null,
+      pendingDiscard: this.pendingDiscard || null,
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

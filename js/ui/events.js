@@ -403,6 +403,8 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
       this.clearSelection();
       this.syncAndRender();
+      // Check for scout action triggered by playing cards
+      this.checkPendingScout();
     }
   },
 
@@ -443,6 +445,8 @@ export const EventHandlers = {
       UIRender.showMessage(`Placed ${results.length} ant(s) on construction`, 'success');
       this.clearSelection();
       this.syncAndRender();
+      // Check for scout action triggered by placing on construction
+      this.checkPendingScout();
     }
 
     if (errors.length > 0) {
@@ -492,14 +496,20 @@ export const EventHandlers = {
 
     const player = GameState.players[this.currentPlayerId];
 
+    console.log('=== RESOLVE BUY ACTION ===');
+    console.log('Selected hand indices:', this.selectedHandIndices);
+    console.log('Current hand:', player.hand.map((id, idx) => `[${idx}]: ${GameState.getCardById(id, this.cardData)?.name}`));
+
     // First, play selected hand cards for resources (sort descending)
     let resourcesGained = 0;
     if (this.selectedHandIndices.length > 0) {
       const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+      console.log('Sorted indices (descending):', sortedIndices);
 
       sortedIndices.forEach(index => {
         const cardId = player.hand[index];
         const card = GameState.getCardById(cardId, this.cardData);
+        console.log(`Playing card at index ${index}: ${card?.name} (ID: ${cardId})`);
 
         const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
         if (result.success && card) {
@@ -600,16 +610,16 @@ export const EventHandlers = {
     }
     UIRender.renderGame();
     this.updateSelectionUI();
-
-    // Check for pending scout action
-    this.checkPendingScout();
   },
 
   // Check and handle pending scout action
   async checkPendingScout() {
     console.log('Checking pending scout:', GameState.pendingScout);
 
-    if (GameState.pendingScout && GameState.pendingScout.playerId === this.currentPlayerId) {
+    // Only show modal if it's this player's pending action AND it's their turn
+    if (GameState.pendingScout &&
+        GameState.pendingScout.playerId === this.currentPlayerId &&
+        GameState.currentPlayer === this.currentPlayerId) {
       console.log('Showing scout modal for', GameState.pendingScout.cards);
 
       try {
@@ -634,6 +644,49 @@ export const EventHandlers = {
           player.deck.push(...GameState.pendingScout.cards);
           GameState.pendingScout = null;
           this.syncAndRender();
+        }
+      }
+    }
+  },
+
+  // Check and handle pending forced discard
+  async checkPendingDiscard() {
+    console.log('Checking pending discard:', GameState.pendingDiscard);
+
+    // Show modal immediately when this player has a pending discard (regardless of whose turn it is)
+    if (GameState.pendingDiscard && GameState.pendingDiscard.playerId === this.currentPlayerId) {
+      console.log('Showing discard modal for player', this.currentPlayerId);
+      const player = GameState.players[this.currentPlayerId];
+
+      if (player.hand.length === 0) {
+        // No cards to discard
+        GameState.pendingDiscard = null;
+        return;
+      }
+
+      try {
+        const selectedCardId = await ModalManager.showCardSelection(
+          player.hand,
+          this.cardData,
+          { title: 'Opponent stole from you! Choose a card to discard' }
+        );
+
+        // Complete the forced discard
+        const result = GameActions.completeDiscard(selectedCardId);
+
+        if (result.success) {
+          UIRender.showMessage('Card discarded', 'info');
+          this.syncAndRender();
+        }
+      } catch (error) {
+        console.error('Discard selection error:', error);
+        // User cancelled - shouldn't happen for forced discard, but handle anyway
+        if (GameState.pendingDiscard && player.hand.length > 0) {
+          // Auto-discard first card
+          const result = GameActions.completeDiscard(player.hand[0]);
+          if (result.success) {
+            this.syncAndRender();
+          }
         }
       }
     }

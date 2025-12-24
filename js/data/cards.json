@@ -166,7 +166,7 @@
       "vp": 1,
       "abilities": ["attack", "steal"],
       "type": "soldier",
-      "description": "Generates 1 resource. Steal 1 resource from opponent when attacking successfully."
+      "description": "Generates 1 resource. Force opponent to discard a card when attacking successfully."
     },
     {
       "id": "carpenter_ant",

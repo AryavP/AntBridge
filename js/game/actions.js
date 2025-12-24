@@ -368,10 +368,17 @@ export const GameActions = {
     // Execute special attack abilities
     attackCards.forEach(card => {
       if (card.abilities && card.abilities.includes('steal')) {
-        // Steal 1 resource
-        if (target.resources > 0) {
-          target.resources -= 1;
-          attacker.resources += 1;
+        // Force opponent to discard a card
+        if (target.hand.length > 0) {
+          console.log('Setting pendingDiscard for player', targetId);
+          GameState.pendingDiscard = {
+            playerId: targetId,
+            reason: 'stolen',
+            attackerId: attackerId
+          };
+          console.log('pendingDiscard set:', GameState.pendingDiscard);
+        } else {
+          console.log('Target has no cards to discard');
         }
       }
 
@@ -431,6 +438,30 @@ export const GameActions = {
 
     // Clear pending scout
     GameState.pendingScout = null;
+
+    return { success: true };
+  },
+
+  // Complete forced discard with player's card selection
+  completeDiscard(selectedCardId) {
+    if (!GameState.pendingDiscard) {
+      return { success: false, error: "No pending discard" };
+    }
+
+    const { playerId } = GameState.pendingDiscard;
+    const player = GameState.players[playerId];
+
+    if (!player.hand.includes(selectedCardId)) {
+      return { success: false, error: "Invalid card selection" };
+    }
+
+    // Remove card from hand and put in discard
+    const cardIndex = player.hand.indexOf(selectedCardId);
+    player.hand.splice(cardIndex, 1);
+    player.discard.push(selectedCardId);
+
+    // Clear pending discard
+    GameState.pendingDiscard = null;
 
     return { success: true };
   },

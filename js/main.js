@@ -311,6 +311,9 @@ class AntBridgeGame {
           // Restore selection UI after rendering
           if (window.eventHandlers) {
             window.eventHandlers.updateSelectionUI();
+            // Check for pending actions when state updates (e.g., when turn changes)
+            window.eventHandlers.checkPendingScout();
+            window.eventHandlers.checkPendingDiscard();
           }
         }
       }

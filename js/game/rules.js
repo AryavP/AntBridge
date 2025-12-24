@@ -62,6 +62,9 @@ export const GameRules = {
   createMarketPool(cardData) {
     const pool = [];
     cardData.ants.forEach(card => {
+      // Skip 0 cost cards - they don't appear in trade row
+      if (card.cost === 0) return;
+
       // Determine quantity based on cost
       let quantity = 5; // default
       if (card.cost <= 2) quantity = 8;

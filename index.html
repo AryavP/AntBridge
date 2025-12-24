@@ -102,6 +102,7 @@
                         <div class="action-buttons">
                             <button id="resolve-btn" class="btn btn-success" style="display: none;">Resolve Action</button>
                             <button id="clear-selection-btn" class="btn btn-secondary" style="display: none;">Clear Selection</button>
+                            <button id="refresh-trade-btn" class="btn btn-secondary">🔄 Refresh Trade</button>
                             <button id="end-turn-btn" class="btn btn-primary btn-large">End Turn</button>
                         </div>
                     </section>
@@ -119,6 +120,18 @@
     <!-- Action Menu (Modal) -->
     <div id="action-menu" class="modal" style="display: none;">
         <div class="modal-backdrop"></div>
+    </div>
+
+    <!-- Card Selection Modal -->
+    <div id="card-selection-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2 id="card-selection-title">Select a Card</h2>
+            <div id="card-selection-cards" class="card-selection-grid"></div>
+            <div class="modal-actions">
+                <button id="card-selection-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->

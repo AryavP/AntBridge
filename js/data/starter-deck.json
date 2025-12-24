@@ -7,9 +7,9 @@
     "worker_ant",
     "worker_ant",
     "worker_ant",
-    "soldier_ant",
+    "worker_ant",
     "soldier_ant",
     "soldier_ant"
   ],
-  "description": "Each player starts with 10 cards: 7 Worker Ants,  and 3 Soldier Ant (for basic combat)."
+  "description": "Each player starts with 10 cards: 7 Worker Ants,  and  Soldier Ant (for basic combat)."
 }

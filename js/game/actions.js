@@ -63,11 +63,27 @@ export const GameActions = {
           break;
 
         case 'scout':
-          // Look at top 3 cards, put 1 in hand, rest on bottom
+          // Look at top 3 cards - store them for interactive selection
+          // If deck doesn't have enough cards, shuffle discard into deck first
+          if (player.deck.length < 3 && player.discard.length > 0) {
+            // Shuffle discard pile into deck
+            player.deck.push(...player.discard);
+            player.discard = [];
+
+            // Shuffle the deck
+            for (let i = player.deck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [player.deck[i], player.deck[j]] = [player.deck[j], player.deck[i]];
+            }
+          }
+
           const topCards = player.deck.splice(-3);
           if (topCards.length > 0) {
-            player.hand.push(topCards[0]); // Take first card
-            player.deck.unshift(...topCards.slice(1)); // Rest to bottom
+            // Store scout state for UI to handle
+            GameState.pendingScout = {
+              playerId: playerId,
+              cards: topCards
+            };
           }
           break;
 
@@ -391,6 +407,32 @@ export const GameActions = {
     });
 
     return { scored: objectivesToScore.length };
+  },
+
+  // Complete scout action with player's card selection
+  completeScout(selectedCardId) {
+    if (!GameState.pendingScout) {
+      return { success: false, error: "No pending scout action" };
+    }
+
+    const { playerId, cards } = GameState.pendingScout;
+    const player = GameState.players[playerId];
+
+    if (!cards.includes(selectedCardId)) {
+      return { success: false, error: "Invalid card selection" };
+    }
+
+    // Add selected card to hand
+    player.hand.push(selectedCardId);
+
+    // Put remaining cards on bottom of deck
+    const remainingCards = cards.filter(c => c !== selectedCardId);
+    player.deck.unshift(...remainingCards);
+
+    // Clear pending scout
+    GameState.pendingScout = null;
+
+    return { success: true };
   },
 
   // End current player's turn

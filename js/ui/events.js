@@ -3,7 +3,9 @@
 
 import { GameState } from '../game/state.js';
 import { GameActions } from '../game/actions.js';
+import { GameRules } from '../game/rules.js';
 import { UIRender } from './render.js';
+import { ModalManager } from './modal.js';
 
 export const EventHandlers = {
   cardData: null,
@@ -41,6 +43,8 @@ export const EventHandlers = {
 
   // Attach all event listeners
   attachEventListeners() {
+    console.log('START of attachEventListeners');
+
     // Delegate click events
     document.addEventListener('click', (e) => {
       // Check if clicked element is a card
@@ -97,7 +101,36 @@ export const EventHandlers = {
         this.handleEndTurn();
         return;
       }
+
+      // Refresh trade row button (for testing)
+      const refreshBtn = e.target.closest('#refresh-trade-btn');
+      if (refreshBtn || e.target.id === 'refresh-trade-btn') {
+        console.log('Button click detected!');
+        this.handleRefreshTrade();
+        return;
+      }
     });
+
+    console.log('END of click event listener setup');
+    console.log('About to set up refresh button listener...');
+
+    // Direct listener for refresh button (for debugging)
+    setTimeout(() => {
+      console.log('setTimeout executed!');
+      const refreshBtn = document.getElementById('refresh-trade-btn');
+      console.log('Looking for refresh button:', refreshBtn);
+      if (refreshBtn) {
+        console.log('Refresh button found! Adding direct listener.');
+        refreshBtn.addEventListener('click', () => {
+          console.log('Direct listener fired!');
+          this.handleRefreshTrade();
+        });
+      } else {
+        console.log('Refresh button NOT found in DOM!');
+      }
+    }, 1000);
+
+    console.log('setTimeout scheduled.');
   },
 
   // Handle clicking a card in hand
@@ -532,6 +565,34 @@ export const EventHandlers = {
     }
   },
 
+  // Refresh trade row (for testing)
+  handleRefreshTrade() {
+    console.log('Refresh trade clicked!');
+    console.log('Trade row before:', [...GameState.tradeRow]);
+    console.log('Market deck size before:', GameState.marketDeck.length);
+
+    // Put current trade row cards back into market deck
+    GameState.marketDeck.push(...GameState.tradeRow);
+
+    // Shuffle market deck for randomness
+    for (let i = GameState.marketDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [GameState.marketDeck[i], GameState.marketDeck[j]] = [GameState.marketDeck[j], GameState.marketDeck[i]];
+    }
+
+    // Clear trade row
+    GameState.tradeRow = [];
+
+    // Refill from market deck
+    GameRules.fillTradeRow();
+
+    console.log('Trade row after:', [...GameState.tradeRow]);
+    console.log('Market deck size after:', GameState.marketDeck.length);
+
+    UIRender.showMessage('Trade row refreshed', 'success');
+    this.syncAndRender();
+  },
+
   // Sync state to Firebase and re-render
   syncAndRender() {
     if (this.updateCallback) {
@@ -539,5 +600,42 @@ export const EventHandlers = {
     }
     UIRender.renderGame();
     this.updateSelectionUI();
+
+    // Check for pending scout action
+    this.checkPendingScout();
+  },
+
+  // Check and handle pending scout action
+  async checkPendingScout() {
+    console.log('Checking pending scout:', GameState.pendingScout);
+
+    if (GameState.pendingScout && GameState.pendingScout.playerId === this.currentPlayerId) {
+      console.log('Showing scout modal for', GameState.pendingScout.cards);
+
+      try {
+        const selectedCardId = await ModalManager.showCardSelection(
+          GameState.pendingScout.cards,
+          this.cardData,
+          { title: 'Scout: Choose a card to add to your hand' }
+        );
+
+        // Complete the scout action
+        const result = GameActions.completeScout(selectedCardId);
+
+        if (result.success) {
+          UIRender.showMessage('Card added to hand', 'success');
+          this.syncAndRender();
+        }
+      } catch (error) {
+        console.error('Scout selection error:', error);
+        // User cancelled - put cards back on top of deck
+        if (GameState.pendingScout) {
+          const player = GameState.players[GameState.pendingScout.playerId];
+          player.deck.push(...GameState.pendingScout.cards);
+          GameState.pendingScout = null;
+          this.syncAndRender();
+        }
+      }
+    }
   }
 };

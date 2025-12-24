@@ -286,6 +286,7 @@ export const GameState = {
       constructionDeck: this.constructionDeck || [],
       objectivesByTier: this.objectivesByTier || {},
       currentTier: this.currentTier || 1,
+      pendingScout: this.pendingScout || null,
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

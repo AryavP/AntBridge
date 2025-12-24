@@ -87,6 +87,24 @@ export const GameActions = {
           }
           break;
 
+        case 'sabotage':
+          // Find opponents with ants in construction zones
+          const opponents = Object.keys(GameState.players).filter(pid => {
+            if (pid === playerId) return false; // Skip current player
+            const opponent = GameState.players[pid];
+            const hasAnts = Object.values(opponent.constructionZone || {}).some(ants => ants && ants.length > 0);
+            return hasAnts;
+          });
+
+          // Sabotage the first opponent with construction (in 2-player, this is the only opponent)
+          if (opponents.length > 0) {
+            GameState.pendingSabotage = {
+              playerId: opponents[0],
+              saboteur: playerId
+            };
+          }
+          break;
+
         // Other abilities handled in specific contexts
         default:
           break;
@@ -462,6 +480,49 @@ export const GameActions = {
 
     // Clear pending discard
     GameState.pendingDiscard = null;
+
+    return { success: true };
+  },
+
+  // Complete sabotage with player's ant selection
+  completeSabotage(selectedAntId) {
+    if (!GameState.pendingSabotage) {
+      return { success: false, error: "No pending sabotage" };
+    }
+
+    const { playerId } = GameState.pendingSabotage;
+    const player = GameState.players[playerId];
+
+    // Find which objective has this ant
+    let foundObjective = null;
+    let antIndex = -1;
+
+    Object.keys(player.constructionZone).forEach(objectiveId => {
+      const ants = player.constructionZone[objectiveId];
+      const index = ants.indexOf(selectedAntId);
+      if (index !== -1) {
+        foundObjective = objectiveId;
+        antIndex = index;
+      }
+    });
+
+    if (foundObjective === null) {
+      return { success: false, error: "Invalid ant selection" };
+    }
+
+    // Remove ant from construction zone
+    player.constructionZone[foundObjective].splice(antIndex, 1);
+
+    // If no ants left on this objective, remove the objective entry
+    if (player.constructionZone[foundObjective].length === 0) {
+      delete player.constructionZone[foundObjective];
+    }
+
+    // Ant goes to discard pile
+    player.discard.push(selectedAntId);
+
+    // Clear pending sabotage
+    GameState.pendingSabotage = null;
 
     return { success: true };
   },

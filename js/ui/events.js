@@ -403,8 +403,9 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Check for scout action triggered by playing cards
+      // Check for scout and sabotage actions triggered by playing cards
       this.checkPendingScout();
+      this.checkPendingSabotage();
     }
   },
 
@@ -684,6 +685,57 @@ export const EventHandlers = {
         if (GameState.pendingDiscard && player.hand.length > 0) {
           // Auto-discard first card
           const result = GameActions.completeDiscard(player.hand[0]);
+          if (result.success) {
+            this.syncAndRender();
+          }
+        }
+      }
+    }
+  },
+
+  // Check and handle pending sabotage
+  async checkPendingSabotage() {
+    console.log('Checking pending sabotage:', GameState.pendingSabotage);
+
+    // Show modal immediately when this player has a pending sabotage (regardless of whose turn it is)
+    if (GameState.pendingSabotage && GameState.pendingSabotage.playerId === this.currentPlayerId) {
+      console.log('Showing sabotage modal for player', this.currentPlayerId);
+      const player = GameState.players[this.currentPlayerId];
+
+      // Collect all ants from all construction zones
+      const allAnts = [];
+      Object.keys(player.constructionZone).forEach(objectiveId => {
+        const ants = player.constructionZone[objectiveId] || [];
+        allAnts.push(...ants);
+      });
+
+      if (allAnts.length === 0) {
+        // No ants to remove
+        GameState.pendingSabotage = null;
+        this.syncAndRender();
+        return;
+      }
+
+      try {
+        const selectedAntId = await ModalManager.showCardSelection(
+          allAnts,
+          this.cardData,
+          { title: 'Sabotaged! Choose an ant to remove from your construction' }
+        );
+
+        // Complete the sabotage
+        const result = GameActions.completeSabotage(selectedAntId);
+
+        if (result.success) {
+          UIRender.showMessage('Ant removed from construction', 'info');
+          this.syncAndRender();
+        }
+      } catch (error) {
+        console.error('Sabotage selection error:', error);
+        // User cancelled - shouldn't happen for forced sabotage, but handle anyway
+        if (GameState.pendingSabotage && allAnts.length > 0) {
+          // Auto-remove first ant
+          const result = GameActions.completeSabotage(allAnts[0]);
           if (result.success) {
             this.syncAndRender();
           }

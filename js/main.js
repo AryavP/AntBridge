@@ -314,6 +314,7 @@ class AntBridgeGame {
             // Check for pending actions when state updates (e.g., when turn changes)
             window.eventHandlers.checkPendingScout();
             window.eventHandlers.checkPendingDiscard();
+            window.eventHandlers.checkPendingSabotage();
           }
         }
       }

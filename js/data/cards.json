@@ -3,10 +3,10 @@
     {
       "id": "worker_ant",
       "name": "Worker Ant",
-      "cost": 2,
+      "cost": 0,
       "resources": 1,
       "attack": 0,
-      "defense": 1,
+      "defense": 0,
       "vp": 0,
       "abilities": ["build"],
       "type": "worker",
@@ -15,9 +15,9 @@
     {
       "id": "soldier_ant",
       "name": "Soldier Ant",
-      "cost": 3,
+      "cost": 0,
       "resources": 0,
-      "attack": 2,
+      "attack": 1,
       "defense": 1,
       "vp": 0,
       "abilities": ["attack"],
@@ -104,9 +104,9 @@
       "attack": 0,
       "defense": 3,
       "vp": 1,
-      "abilities": ["heal", "defend"],
+      "abilities": ["draw", "defend"],
       "type": "support",
-      "description": "Generates 1 resource. Return 1 ant from discard to hand when played."
+      "description": "Generates 1 resource. Draw 1 ant when played."
     },
     {
       "id": "explorer_ant",
@@ -126,7 +126,7 @@
       "cost": 4,
       "resources": 3,
       "attack": 0,
-      "defense": 3,
+      "defense": 2,
       "vp": 1,
       "abilities": ["build", "resources"],
       "type": "worker",
@@ -135,7 +135,7 @@
     {
       "id": "guard_ant",
       "name": "Guard Ant",
-      "cost": 3,
+      "cost": 2,
       "resources": 0,
       "attack": 2,
       "defense": 3,

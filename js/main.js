@@ -315,6 +315,7 @@ class AntBridgeGame {
             window.eventHandlers.checkPendingScout();
             window.eventHandlers.checkPendingDiscard();
             window.eventHandlers.checkPendingSabotage();
+            window.eventHandlers.checkPendingTrash();
           }
         }
       }

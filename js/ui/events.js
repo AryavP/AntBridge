@@ -403,9 +403,10 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Check for scout and sabotage actions triggered by playing cards
+      // Check for scout, sabotage, and trash actions triggered by playing cards
       this.checkPendingScout();
       this.checkPendingSabotage();
+      this.checkPendingTrash();
     }
   },
 
@@ -740,6 +741,50 @@ export const EventHandlers = {
             this.syncAndRender();
           }
         }
+      }
+    }
+  },
+
+  // Check and handle pending trash
+  async checkPendingTrash() {
+    console.log('Checking pending trash:', GameState.pendingTrash);
+
+    // Only show modal if it's this player's pending action AND it's their turn
+    if (GameState.pendingTrash &&
+        GameState.pendingTrash.playerId === this.currentPlayerId &&
+        GameState.currentPlayer === this.currentPlayerId) {
+      console.log('Showing trash modal for player', this.currentPlayerId);
+      const player = GameState.players[this.currentPlayerId];
+
+      // Collect cards from hand and discard pile
+      const availableCards = [...player.hand, ...player.discard];
+
+      if (availableCards.length === 0) {
+        // No cards to trash
+        GameState.pendingTrash = null;
+        this.syncAndRender();
+        return;
+      }
+
+      try {
+        const selectedCardId = await ModalManager.showCardSelection(
+          availableCards,
+          this.cardData,
+          { title: 'Choose a card to trash (permanently remove from your deck)' }
+        );
+
+        // Complete the trash
+        const result = GameActions.completeTrash(selectedCardId);
+
+        if (result.success) {
+          UIRender.showMessage(`Card trashed from ${result.location}`, 'success');
+          this.syncAndRender();
+        }
+      } catch (error) {
+        console.error('Trash selection error:', error);
+        // User cancelled - clear pending trash
+        GameState.pendingTrash = null;
+        this.syncAndRender();
       }
     }
   }

@@ -179,6 +179,30 @@
       "abilities": ["build", "vp_bonus"],
       "type": "worker",
       "description": "Generates 2 resources. Gain 1 VP when completing a construction objective."
+    },
+    {
+      "id": "recycler_ant",
+      "name": "Recycler Ant",
+      "cost": 3,
+      "resources": 0,
+      "attack": 1,
+      "defense": 0,
+      "vp": 0,
+      "abilities": ["trash"],
+      "type": "support",
+      "description": "Trash a card from your hand or discard pile, permanently removing it from your deck."
+    },
+    {
+      "id": "optimizer_ant",
+      "name": "Optimizer Ant",
+      "cost": 5,
+      "resources": 2,
+      "attack": 2,
+      "defense": 0,
+      "vp": 1,
+      "abilities": ["trash", "resources"],
+      "type": "support",
+      "description": "Generates 2 resources. Trash a card from your hand or discard pile, permanently removing it from your deck."
     }
   ]
 }

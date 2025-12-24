@@ -289,6 +289,7 @@ export const GameState = {
       pendingScout: this.pendingScout || null,
       pendingDiscard: this.pendingDiscard || null,
       pendingSabotage: this.pendingSabotage || null,
+      pendingTrash: this.pendingTrash || null,
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

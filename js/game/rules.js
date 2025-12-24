@@ -130,6 +130,9 @@ export const GameRules = {
     player.discard.push(...player.hand);
     player.hand = [];
 
+    // Reset resources (unused resources don't carry over)
+    player.resources = 0;
+
     // Draw new hand
     this.drawCards(playerId, this.HAND_SIZE);
 
@@ -161,7 +164,7 @@ export const GameRules = {
   },
 
   // End game and determine winner
-  endGame(cardData, constructionData) {
+  endGame() {
     GameState.status = 'finished';
 
     // Calculate final VP for all players
@@ -169,7 +172,7 @@ export const GameRules = {
     let winnerId = null;
 
     Object.keys(GameState.players).forEach(playerId => {
-      const vp = GameState.calculateVP(playerId, cardData, constructionData);
+      const vp = GameState.calculateVP(playerId);
       if (vp > highestVP) {
         highestVP = vp;
         winnerId = playerId;

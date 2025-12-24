@@ -41,7 +41,7 @@ export const UIRender = {
       playerDiv.className = `player ${player.id === GameState.currentPlayer ? 'current-turn' : ''}`;
       playerDiv.dataset.playerId = player.id;
 
-      const vp = GameState.calculateVP(player.id, this.cardData, this.constructionData);
+      const vp = GameState.calculateVP(player.id);
 
       playerDiv.innerHTML = `
         <h3>${player.name} ${player.id === this.currentPlayerId ? '(You)' : ''}</h3>

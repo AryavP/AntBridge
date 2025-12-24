@@ -37,7 +37,7 @@ export const GameActions = {
   },
 
   // Execute card abilities when played
-  executeCardAbilities(playerId, card, cardData) {
+  executeCardAbilities(playerId, card, cardData, skipResources = false) {
     const player = GameState.players[playerId];
 
     if (!card.abilities) return;
@@ -49,7 +49,9 @@ export const GameActions = {
           break;
 
         case 'resources':
-          player.resources += 1;
+          if (!skipResources) {
+            player.resources += 1;
+          }
           break;
 
         case 'heal':
@@ -78,11 +80,17 @@ export const GameActions = {
     // Special abilities based on card ID
     if (card.id === 'queen_ant') {
       GameRules.drawCards(playerId, 2);
-      player.resources += 2;
+      if (!skipResources) {
+        player.resources += 2;
+      }
     } else if (card.id === 'forager_ant') {
-      player.resources += 1;
+      if (!skipResources) {
+        player.resources += 1;
+      }
     } else if (card.id === 'heavy_lifter') {
-      player.resources += 2;
+      if (!skipResources) {
+        player.resources += 2;
+      }
     }
   },
 
@@ -112,6 +120,17 @@ export const GameActions = {
       return { success: false, error: "Cannot place this ant on construction" };
     }
 
+    // Add to construction zone (store card ID, not the full card object)
+    if (!player.constructionZone[objectiveId]) {
+      player.constructionZone[objectiveId] = [];
+    }
+
+    // Check if construction zone is already at capacity
+    const currentAnts = player.constructionZone[objectiveId].length;
+    if (currentAnts >= objective.antsRequired) {
+      return { success: false, error: `This objective already has the maximum ${objective.antsRequired} ants` };
+    }
+
     // Remove from hand
     const cardIndex = player.hand.indexOf(cardId);
     if (cardIndex === -1) {
@@ -120,14 +139,11 @@ export const GameActions = {
 
     player.hand.splice(cardIndex, 1);
 
-    // Don't grant resources when placing on construction
-    // Resources are only granted when playing cards explicitly for resources
-
-    // Add to construction zone (store card ID, not the full card object)
-    if (!player.constructionZone[objectiveId]) {
-      player.constructionZone[objectiveId] = [];
-    }
+    // Add to construction zone
     player.constructionZone[objectiveId].push(cardId);
+
+    // Execute card abilities (draw, scout, etc.) but skip resources
+    this.executeCardAbilities(playerId, card, cardData, true);
 
     console.log(`Placed ${card.name} on ${objective.name}. Construction zone now has ${player.constructionZone[objectiveId].length} ants.`);
     console.log('Construction zone:', player.constructionZone);
@@ -186,12 +202,6 @@ export const GameActions = {
 
         case 'resources_per_turn':
           player.bonuses.resourcesPerTurn += objective.reward.amount;
-          break;
-
-        case 'game_bonus':
-          if (objective.reward.effect === 'double_vp_from_ants') {
-            player.bonuses.doubleVpFromAnts = true;
-          }
           break;
 
         case 'instant_win':
@@ -259,6 +269,11 @@ export const GameActions = {
 
     // Add to player's discard
     player.discard.push(cardId);
+
+    // Grant VP from card (one-time upon purchase)
+    if (card.vp) {
+      player.vp += card.vp;
+    }
 
     // Refill trade row
     GameRules.fillTradeRow();

@@ -31,8 +31,7 @@ export const GameState = {
       bonuses: {
         resourcesPerTurn: 0,
         defenseBonus: 0,
-        vpMultiplier: 1,
-        doubleVpFromAnts: false
+        vpMultiplier: 1
       },
       ready: false
     };
@@ -145,8 +144,7 @@ export const GameState = {
       player.bonuses = player.bonuses || {
         resourcesPerTurn: 0,
         defenseBonus: 0,
-        vpMultiplier: 1,
-        doubleVpFromAnts: false
+        vpMultiplier: 1
       };
     });
   },
@@ -197,36 +195,12 @@ export const GameState = {
   },
 
   // Calculate total VP for a player
-  calculateVP(playerId, cardData, constructionData) {
+  calculateVP(playerId) {
     const player = this.players[playerId];
     let totalVP = player.vp;
 
-    // VP from cards in deck
-    const allCards = [...player.deck, ...player.hand, ...player.discard];
-    allCards.forEach(cardId => {
-      const card = this.getCardById(cardId, cardData);
-      if (card) {
-        let cardVP = card.vp;
-        if (player.bonuses.doubleVpFromAnts) {
-          cardVP *= 2;
-        }
-        totalVP += cardVP;
-      }
-    });
-
-    // VP from ants in construction zone
-    Object.values(player.constructionZone).forEach(antIds => {
-      antIds.forEach(antId => {
-        const ant = this.getCardById(antId, cardData);
-        if (ant) {
-          let antVP = ant.vp || 0;
-          if (player.bonuses.doubleVpFromAnts) {
-            antVP *= 2;
-          }
-          totalVP += antVP;
-        }
-      });
-    });
+    // VP is now granted once upon purchase, not counted from cards
+    // Only apply bonuses and multipliers to base VP
 
     // Apply VP multiplier
     totalVP *= player.bonuses.vpMultiplier;
@@ -295,8 +269,7 @@ export const GameState = {
         bonuses: player.bonuses || {
           resourcesPerTurn: 0,
           defenseBonus: 0,
-          vpMultiplier: 1,
-          doubleVpFromAnts: false
+          vpMultiplier: 1
         },
         ready: player.ready || false
       };

@@ -484,6 +484,10 @@ export const EventHandlers = {
       );
       this.clearSelection();
       this.syncAndRender();
+      // Check for abilities triggered by attacking (trash, scout, sabotage, etc.)
+      this.checkPendingScout();
+      this.checkPendingSabotage();
+      this.checkPendingTrash();
     } else {
       UIRender.showMessage(result.error, 'error');
     }

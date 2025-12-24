@@ -345,12 +345,18 @@ export const GameActions = {
       return { success: false, error: validation.reason };
     }
 
-    // Remove attack cards from hand
+    // Remove attack cards from hand and execute their abilities
     cardIds.forEach(cardId => {
       const index = attacker.hand.indexOf(cardId);
       if (index !== -1) {
         attacker.hand.splice(index, 1);
         attacker.discard.push(cardId);
+
+        // Execute card abilities when attacking (skip resources since we're attacking, not playing for resources)
+        const card = GameState.getCardById(cardId, cardData);
+        if (card) {
+          this.executeCardAbilities(attackerId, card, cardData, true);
+        }
       }
     });
 

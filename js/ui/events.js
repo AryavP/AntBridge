@@ -16,6 +16,10 @@ export const EventHandlers = {
   selectedHandIndices: [],  // Indices of cards selected from hand
   selectedTradeIndices: [],  // Indices of trade cards selected
   initialized: false,  // Track if event listeners are attached
+  isProcessingScout: false,  // Prevent concurrent scout modals
+  isProcessingDiscard: false,  // Prevent concurrent discard modals
+  isProcessingSabotage: false,  // Prevent concurrent sabotage modals
+  isProcessingTrash: false,  // Prevent concurrent trash modals
 
   // Initialize event handlers
   init(cardData, constructionData, playerId, updateCallback) {
@@ -620,12 +624,20 @@ export const EventHandlers = {
 
   // Check and handle pending scout action
   async checkPendingScout() {
+    // Prevent concurrent scout modals
+    if (this.isProcessingScout) {
+      console.log('Already processing scout, skipping...');
+      return;
+    }
+
     console.log('Checking pending scout:', GameState.pendingScout);
 
     // Only show modal if it's this player's pending action AND it's their turn
     if (GameState.pendingScout &&
         GameState.pendingScout.playerId === this.currentPlayerId &&
         GameState.currentPlayer === this.currentPlayerId) {
+
+      this.isProcessingScout = true;
       console.log('Showing scout modal for', GameState.pendingScout.cards);
 
       try {
@@ -635,12 +647,15 @@ export const EventHandlers = {
           { title: 'Scout: Choose a card to add to your hand' }
         );
 
-        // Complete the scout action
+        // Complete the scout action (this clears pendingScout internally)
         const result = GameActions.completeScout(selectedCardId);
 
         if (result.success) {
           UIRender.showMessage('Card added to hand', 'success');
-          this.syncAndRender();
+        } else {
+          // If completion failed, still clear the pending state
+          GameState.pendingScout = null;
+          UIRender.showMessage(result.error || 'Scout failed', 'error');
         }
       } catch (error) {
         console.error('Scout selection error:', error);
@@ -649,24 +664,35 @@ export const EventHandlers = {
           const player = GameState.players[GameState.pendingScout.playerId];
           player.deck.push(...GameState.pendingScout.cards);
           GameState.pendingScout = null;
-          this.syncAndRender();
         }
+      } finally {
+        // Always sync after processing to update Firebase
+        this.syncAndRender();
+        this.isProcessingScout = false;
       }
     }
   },
 
   // Check and handle pending forced discard
   async checkPendingDiscard() {
+    // Prevent concurrent discard modals
+    if (this.isProcessingDiscard) {
+      console.log('Already processing discard, skipping...');
+      return;
+    }
+
     console.log('Checking pending discard:', GameState.pendingDiscard);
 
     // Show modal immediately when this player has a pending discard (regardless of whose turn it is)
     if (GameState.pendingDiscard && GameState.pendingDiscard.playerId === this.currentPlayerId) {
+      this.isProcessingDiscard = true;
       console.log('Showing discard modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
       if (player.hand.length === 0) {
         // No cards to discard
         GameState.pendingDiscard = null;
+        this.isProcessingDiscard = false;
         return;
       }
 
@@ -677,33 +703,46 @@ export const EventHandlers = {
           { title: 'Opponent stole from you! Choose a card to discard' }
         );
 
-        // Complete the forced discard
+        // Complete the forced discard (this clears pendingDiscard internally)
         const result = GameActions.completeDiscard(selectedCardId);
 
         if (result.success) {
           UIRender.showMessage('Card discarded', 'info');
-          this.syncAndRender();
+        } else {
+          // If completion failed, still clear the pending state
+          GameState.pendingDiscard = null;
+          UIRender.showMessage(result.error || 'Discard failed', 'error');
         }
       } catch (error) {
         console.error('Discard selection error:', error);
-        // User cancelled - shouldn't happen for forced discard, but handle anyway
+        // User cancelled - auto-discard first card
         if (GameState.pendingDiscard && player.hand.length > 0) {
-          // Auto-discard first card
-          const result = GameActions.completeDiscard(player.hand[0]);
-          if (result.success) {
-            this.syncAndRender();
-          }
+          GameActions.completeDiscard(player.hand[0]);
+        } else {
+          // No cards to discard, just clear the pending state
+          GameState.pendingDiscard = null;
         }
+      } finally {
+        // Always sync after processing to update Firebase
+        this.syncAndRender();
+        this.isProcessingDiscard = false;
       }
     }
   },
 
   // Check and handle pending sabotage
   async checkPendingSabotage() {
+    // Prevent concurrent sabotage modals
+    if (this.isProcessingSabotage) {
+      console.log('Already processing sabotage, skipping...');
+      return;
+    }
+
     console.log('Checking pending sabotage:', GameState.pendingSabotage);
 
     // Show modal immediately when this player has a pending sabotage (regardless of whose turn it is)
     if (GameState.pendingSabotage && GameState.pendingSabotage.playerId === this.currentPlayerId) {
+      this.isProcessingSabotage = true;
       console.log('Showing sabotage modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
@@ -717,6 +756,7 @@ export const EventHandlers = {
       if (allAnts.length === 0) {
         // No ants to remove
         GameState.pendingSabotage = null;
+        this.isProcessingSabotage = false;
         this.syncAndRender();
         return;
       }
@@ -728,35 +768,49 @@ export const EventHandlers = {
           { title: 'Sabotaged! Choose an ant to remove from your construction' }
         );
 
-        // Complete the sabotage
+        // Complete the sabotage (this clears pendingSabotage internally)
         const result = GameActions.completeSabotage(selectedAntId);
 
         if (result.success) {
           UIRender.showMessage('Ant removed from construction', 'info');
-          this.syncAndRender();
+        } else {
+          // If completion failed, still clear the pending state
+          GameState.pendingSabotage = null;
+          UIRender.showMessage(result.error || 'Sabotage failed', 'error');
         }
       } catch (error) {
         console.error('Sabotage selection error:', error);
-        // User cancelled - shouldn't happen for forced sabotage, but handle anyway
+        // User cancelled - auto-remove first ant
         if (GameState.pendingSabotage && allAnts.length > 0) {
-          // Auto-remove first ant
-          const result = GameActions.completeSabotage(allAnts[0]);
-          if (result.success) {
-            this.syncAndRender();
-          }
+          GameActions.completeSabotage(allAnts[0]);
+        } else {
+          // No ants to remove, just clear the pending state
+          GameState.pendingSabotage = null;
         }
+      } finally {
+        // Always sync after processing to update Firebase
+        this.syncAndRender();
+        this.isProcessingSabotage = false;
       }
     }
   },
 
   // Check and handle pending trash
   async checkPendingTrash() {
+    // Prevent concurrent trash modals
+    if (this.isProcessingTrash) {
+      console.log('Already processing trash, skipping...');
+      return;
+    }
+
     console.log('Checking pending trash:', GameState.pendingTrash);
 
     // Only show modal if it's this player's pending action AND it's their turn
     if (GameState.pendingTrash &&
         GameState.pendingTrash.playerId === this.currentPlayerId &&
         GameState.currentPlayer === this.currentPlayerId) {
+
+      this.isProcessingTrash = true;
       console.log('Showing trash modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
@@ -766,6 +820,7 @@ export const EventHandlers = {
       if (availableCards.length === 0) {
         // No cards to trash
         GameState.pendingTrash = null;
+        this.isProcessingTrash = false;
         this.syncAndRender();
         return;
       }
@@ -777,18 +832,24 @@ export const EventHandlers = {
           { title: 'Choose a card to trash (permanently remove from your deck)' }
         );
 
-        // Complete the trash
+        // Complete the trash (this clears pendingTrash internally)
         const result = GameActions.completeTrash(selectedCardId);
 
         if (result.success) {
           UIRender.showMessage(`Card trashed from ${result.location}`, 'success');
-          this.syncAndRender();
+        } else {
+          // If completion failed, still clear the pending state to prevent loops
+          GameState.pendingTrash = null;
+          UIRender.showMessage(result.error || 'Trash failed', 'error');
         }
       } catch (error) {
         console.error('Trash selection error:', error);
         // User cancelled - clear pending trash
         GameState.pendingTrash = null;
+      } finally {
+        // Always sync after processing to update Firebase
         this.syncAndRender();
+        this.isProcessingTrash = false;
       }
     }
   }

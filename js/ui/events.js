@@ -389,11 +389,11 @@ export const EventHandlers = {
     const results = [];
     let totalResources = 0;
 
-    // Sort descending to remove from end first
+    // Sort descending and get all card IDs FIRST, before playing any
     const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+    const cardIds = sortedIndices.map(index => player.hand[index]);
 
-    sortedIndices.forEach(index => {
-      const cardId = player.hand[index];
+    cardIds.forEach(cardId => {
       const card = GameState.getCardById(cardId, this.cardData);
 
       const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
@@ -426,11 +426,11 @@ export const EventHandlers = {
     const results = [];
     const errors = [];
 
-    // Get card IDs from indices (sort descending to remove from end first)
+    // Get all card IDs FIRST, before placing any (sort descending to avoid index shifting)
     const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+    const cardIds = sortedIndices.map(index => player.hand[index]);
 
-    sortedIndices.forEach(index => {
-      const cardId = player.hand[index];
+    cardIds.forEach(cardId => {
       const card = GameState.getCardById(cardId, this.cardData);
 
       const result = GameActions.placeAntOnConstruction(
@@ -470,8 +470,9 @@ export const EventHandlers = {
 
     const player = GameState.players[this.currentPlayerId];
 
-    // Get card IDs from indices
-    const cardIds = this.selectedHandIndices.map(idx => player.hand[idx]);
+    // Get all card IDs FIRST, before attacking (sort descending to avoid index shifting)
+    const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+    const cardIds = sortedIndices.map(idx => player.hand[idx]);
 
     // Execute attack
     const result = GameActions.attackPlayer(
@@ -518,10 +519,13 @@ export const EventHandlers = {
       const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
       console.log('Sorted indices (descending):', sortedIndices);
 
-      sortedIndices.forEach(index => {
-        const cardId = player.hand[index];
+      // Get all card IDs FIRST, before playing any (to avoid index shifting)
+      const cardIds = sortedIndices.map(index => player.hand[index]);
+      console.log('Card IDs to play:', cardIds.map(id => GameState.getCardById(id, this.cardData)?.name));
+
+      cardIds.forEach(cardId => {
         const card = GameState.getCardById(cardId, this.cardData);
-        console.log(`Playing card at index ${index}: ${card?.name} (ID: ${cardId})`);
+        console.log(`Playing card: ${card?.name} (ID: ${cardId})`);
 
         const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
         if (result.success && card) {

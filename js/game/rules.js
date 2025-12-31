@@ -136,6 +136,20 @@ export const GameRules = {
     // Reset resources (unused resources don't carry over)
     player.resources = 0;
 
+    // Clear any pending events for this player
+    if (GameState.pendingScout?.playerId === playerId) {
+      GameState.pendingScout = null;
+    }
+    if (GameState.pendingDiscard?.playerId === playerId) {
+      GameState.pendingDiscard = null;
+    }
+    if (GameState.pendingSabotage?.playerId === playerId) {
+      GameState.pendingSabotage = null;
+    }
+    if (GameState.pendingTrash?.playerId === playerId) {
+      GameState.pendingTrash = null;
+    }
+
     // Draw new hand
     this.drawCards(playerId, this.HAND_SIZE);
 

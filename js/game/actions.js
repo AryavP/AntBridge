@@ -115,6 +115,25 @@ export const GameActions = {
           };
           break;
 
+        case 'steal':
+          // Force opponent to discard a card
+          const opponentIds = Object.keys(GameState.players).filter(pid => pid !== playerId);
+          if (opponentIds.length > 0) {
+            const opponentId = opponentIds[0]; // In 2-player, just the one opponent
+            const opponent = GameState.players[opponentId];
+            if (opponent.hand.length > 0) {
+              console.log('Setting pendingDiscard for player', opponentId);
+              GameState.pendingDiscard = {
+                playerId: opponentId,
+                reason: 'stolen',
+                attackerId: playerId,
+                eventId: `discard_${Date.now()}_${Math.random()}`
+              };
+              console.log('pendingDiscard set:', GameState.pendingDiscard);
+            }
+          }
+          break;
+
         // Other abilities handled in specific contexts
         default:
           break;
@@ -399,28 +418,7 @@ export const GameActions = {
     // Award VP to attacker for successful attack
     attacker.vp += 1;
 
-    // Execute special attack abilities
-    attackCards.forEach(card => {
-      if (card.abilities && card.abilities.includes('steal')) {
-        // Force opponent to discard a card
-        if (target.hand.length > 0) {
-          console.log('Setting pendingDiscard for player', targetId);
-          GameState.pendingDiscard = {
-            playerId: targetId,
-            reason: 'stolen',
-            attackerId: attackerId,
-            eventId: `discard_${Date.now()}_${Math.random()}`
-          };
-          console.log('pendingDiscard set:', GameState.pendingDiscard);
-        } else {
-          console.log('Target has no cards to discard');
-        }
-      }
-
-      if (card.abilities && card.abilities.includes('sabotage')) {
-        // Already handled in card play
-      }
-    });
+    // Note: Special attack abilities (steal, sabotage, etc.) are handled in executeCardAbilities
 
     return {
       success: true,

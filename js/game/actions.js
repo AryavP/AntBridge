@@ -82,7 +82,8 @@ export const GameActions = {
             // Store scout state for UI to handle
             GameState.pendingScout = {
               playerId: playerId,
-              cards: topCards
+              cards: topCards,
+              eventId: `scout_${Date.now()}_${Math.random()}`
             };
           }
           break;
@@ -100,7 +101,8 @@ export const GameActions = {
           if (opponents.length > 0) {
             GameState.pendingSabotage = {
               playerId: opponents[0],
-              saboteur: playerId
+              saboteur: playerId,
+              eventId: `sabotage_${Date.now()}_${Math.random()}`
             };
           }
           break;
@@ -108,7 +110,8 @@ export const GameActions = {
         case 'trash':
           // Allow player to trash a card from hand or discard pile
           GameState.pendingTrash = {
-            playerId: playerId
+            playerId: playerId,
+            eventId: `trash_${Date.now()}_${Math.random()}`
           };
           break;
 
@@ -405,7 +408,8 @@ export const GameActions = {
           GameState.pendingDiscard = {
             playerId: targetId,
             reason: 'stolen',
-            attackerId: attackerId
+            attackerId: attackerId,
+            eventId: `discard_${Date.now()}_${Math.random()}`
           };
           console.log('pendingDiscard set:', GameState.pendingDiscard);
         } else {

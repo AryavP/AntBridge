@@ -20,6 +20,7 @@ export const EventHandlers = {
   isProcessingDiscard: false,  // Prevent concurrent discard modals
   isProcessingSabotage: false,  // Prevent concurrent sabotage modals
   isProcessingTrash: false,  // Prevent concurrent trash modals
+  processedEvents: new Set(),  // Track event IDs that have been processed
 
   // Initialize event handlers
   init(cardData, constructionData, playerId, updateCallback) {
@@ -638,6 +639,20 @@ export const EventHandlers = {
         GameState.pendingScout.playerId === this.currentPlayerId &&
         GameState.currentPlayer === this.currentPlayerId) {
 
+      // Check if we've already processed this event
+      const eventId = GameState.pendingScout.eventId;
+      if (eventId && this.processedEvents.has(eventId)) {
+        console.log('Scout event already processed, clearing stale state:', eventId);
+        GameState.pendingScout = null;
+        this.syncAndRender();
+        return;
+      }
+
+      // Mark event as being processed
+      if (eventId) {
+        this.processedEvents.add(eventId);
+      }
+
       this.isProcessingScout = true;
       console.log('Showing scout modal for', GameState.pendingScout.cards);
 
@@ -687,6 +702,20 @@ export const EventHandlers = {
 
     // Show modal immediately when this player has a pending discard (regardless of whose turn it is)
     if (GameState.pendingDiscard && GameState.pendingDiscard.playerId === this.currentPlayerId) {
+      // Check if we've already processed this event
+      const eventId = GameState.pendingDiscard.eventId;
+      if (eventId && this.processedEvents.has(eventId)) {
+        console.log('Discard event already processed, clearing stale state:', eventId);
+        GameState.pendingDiscard = null;
+        this.syncAndRender();
+        return;
+      }
+
+      // Mark event as being processed
+      if (eventId) {
+        this.processedEvents.add(eventId);
+      }
+
       this.isProcessingDiscard = true;
       console.log('Showing discard modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
@@ -745,6 +774,20 @@ export const EventHandlers = {
 
     // Show modal immediately when this player has a pending sabotage (regardless of whose turn it is)
     if (GameState.pendingSabotage && GameState.pendingSabotage.playerId === this.currentPlayerId) {
+      // Check if we've already processed this event
+      const eventId = GameState.pendingSabotage.eventId;
+      if (eventId && this.processedEvents.has(eventId)) {
+        console.log('Sabotage event already processed, clearing stale state:', eventId);
+        GameState.pendingSabotage = null;
+        this.syncAndRender();
+        return;
+      }
+
+      // Mark event as being processed
+      if (eventId) {
+        this.processedEvents.add(eventId);
+      }
+
       this.isProcessingSabotage = true;
       console.log('Showing sabotage modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
@@ -813,6 +856,20 @@ export const EventHandlers = {
     if (GameState.pendingTrash &&
         GameState.pendingTrash.playerId === this.currentPlayerId &&
         GameState.currentPlayer === this.currentPlayerId) {
+
+      // Check if we've already processed this event
+      const eventId = GameState.pendingTrash.eventId;
+      if (eventId && this.processedEvents.has(eventId)) {
+        console.log('Trash event already processed, clearing stale state:', eventId);
+        GameState.pendingTrash = null;
+        this.syncAndRender();
+        return;
+      }
+
+      // Mark event as being processed
+      if (eventId) {
+        this.processedEvents.add(eventId);
+      }
 
       this.isProcessingTrash = true;
       console.log('Showing trash modal for player', this.currentPlayerId);

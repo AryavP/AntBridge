@@ -667,9 +667,10 @@ export const EventHandlers = {
           GameState.pendingScout = null;
         }
       } finally {
+        // Reset flag BEFORE syncing to prevent re-triggering from Firebase listener
+        this.isProcessingScout = false;
         // Always sync after processing to update Firebase
         this.syncAndRender();
-        this.isProcessingScout = false;
       }
     }
   },
@@ -724,9 +725,10 @@ export const EventHandlers = {
           GameState.pendingDiscard = null;
         }
       } finally {
+        // Reset flag BEFORE syncing to prevent re-triggering from Firebase listener
+        this.isProcessingDiscard = false;
         // Always sync after processing to update Firebase
         this.syncAndRender();
-        this.isProcessingDiscard = false;
       }
     }
   },
@@ -789,9 +791,10 @@ export const EventHandlers = {
           GameState.pendingSabotage = null;
         }
       } finally {
+        // Reset flag BEFORE syncing to prevent re-triggering from Firebase listener
+        this.isProcessingSabotage = false;
         // Always sync after processing to update Firebase
         this.syncAndRender();
-        this.isProcessingSabotage = false;
       }
     }
   },
@@ -848,9 +851,10 @@ export const EventHandlers = {
         // User cancelled - clear pending trash
         GameState.pendingTrash = null;
       } finally {
+        // Reset flag BEFORE syncing to prevent re-triggering from Firebase listener
+        this.isProcessingTrash = false;
         // Always sync after processing to update Firebase
         this.syncAndRender();
-        this.isProcessingTrash = false;
       }
     }
   }

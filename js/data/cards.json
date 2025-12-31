@@ -43,7 +43,7 @@
       "resources": 2,
       "attack": 0,
       "defense": 2,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["build", "resources"],
       "type": "worker",
       "description": "Generates 2 resources when played. Can build."
@@ -55,7 +55,7 @@
       "resources": 1,
       "attack": 4,
       "defense": 2,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["attack", "defend"],
       "type": "soldier",
       "description": "Powerful combat ant with high attack and defense. Generates 1 resource."
@@ -79,7 +79,7 @@
       "resources": 1,
       "attack": 0,
       "defense": 2,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["build", "double_build"],
       "type": "worker",
       "description": "Generates 1 resource. Counts as 2 ants when building on construction objectives."
@@ -103,7 +103,7 @@
       "resources": 1,
       "attack": 0,
       "defense": 3,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["draw", "defend"],
       "type": "support",
       "description": "Generates 1 resource. Draw 1 ant when played."
@@ -127,7 +127,7 @@
       "resources": 3,
       "attack": 0,
       "defense": 2,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["build", "resources"],
       "type": "worker",
       "description": "Generates 3 resources when played. Strong builder."
@@ -163,7 +163,7 @@
       "resources": 1,
       "attack": 3,
       "defense": 1,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["attack", "steal"],
       "type": "soldier",
       "description": "Generates 1 resource. Force opponent to discard a card when attacking successfully."
@@ -175,7 +175,7 @@
       "resources": 2,
       "attack": 0,
       "defense": 2,
-      "vp": 2,
+      "vp": 0,
       "abilities": ["build", "vp_bonus"],
       "type": "worker",
       "description": "Generates 2 resources. Gain 1 VP when completing a construction objective."
@@ -199,7 +199,7 @@
       "resources": 2,
       "attack": 2,
       "defense": 0,
-      "vp": 1,
+      "vp": 0,
       "abilities": ["trash", "resources"],
       "type": "support",
       "description": "Generates 2 resources. Trash a card from your hand or discard pile, permanently removing it from your deck."

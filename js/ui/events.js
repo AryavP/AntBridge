@@ -488,8 +488,9 @@ export const EventHandlers = {
       );
       this.clearSelection();
       this.syncAndRender();
-      // Check for abilities triggered by attacking (trash, scout, sabotage, etc.)
+      // Check for abilities triggered by attacking (trash, scout, sabotage, steal, etc.)
       this.checkPendingScout();
+      this.checkPendingDiscard();
       this.checkPendingSabotage();
       this.checkPendingTrash();
     } else {

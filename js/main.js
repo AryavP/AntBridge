@@ -311,11 +311,6 @@ class AntBridgeGame {
           // Restore selection UI after rendering
           if (window.eventHandlers) {
             window.eventHandlers.updateSelectionUI();
-            // Check for pending actions when state updates (e.g., when turn changes)
-            window.eventHandlers.checkPendingScout();
-            window.eventHandlers.checkPendingDiscard();
-            window.eventHandlers.checkPendingSabotage();
-            window.eventHandlers.checkPendingTrash();
           }
         }
       }
@@ -369,6 +364,12 @@ class AntBridgeGame {
 
     // Render initial state
     UIRender.renderGame();
+
+    // Check for any pending events when game screen is first shown
+    EventHandlers.checkPendingScout();
+    EventHandlers.checkPendingDiscard();
+    EventHandlers.checkPendingSabotage();
+    EventHandlers.checkPendingTrash();
   }
 
   // Update game state to Firebase

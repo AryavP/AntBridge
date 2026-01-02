@@ -44,7 +44,7 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["resources"],
+      "abilities": [],
       "type": "worker",
       "description": "Generates 2 resources when played."
     },
@@ -68,7 +68,7 @@
       "attack": 1,
       "defense": 3,
       "vp": 3,
-      "abilities": ["draw", "resources"],
+      "abilities": ["draw"],
       "type": "special",
       "description": "Generates 3 resources. Draw 2 cards when played."
     },
@@ -128,7 +128,7 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["resources"],
+      "abilities": [],
       "type": "worker",
       "description": "Generates 3 resources when played."
     },
@@ -176,7 +176,7 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["resources"],
+      "abilities": [],
       "type": "worker",
       "description": "Generates 2 resources when played."
     },
@@ -200,7 +200,7 @@
       "attack": 2,
       "defense": 0,
       "vp": 0,
-      "abilities": ["trash", "resources"],
+      "abilities": ["trash"],
       "type": "support",
       "description": "Generates 2 resources. Trash a card from your hand or discard pile, permanently removing it from your deck."
     }

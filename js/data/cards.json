@@ -85,18 +85,6 @@
       "description": "Generates 1 resource. Strong defensive ant."
     },
     {
-      "id": "tunnel_ant",
-      "name": "Tunnel Ant",
-      "cost": 3,
-      "resources": 1,
-      "attack": 1,
-      "defense": 1,
-      "vp": 0,
-      "abilities": ["sabotage"],
-      "type": "soldier",
-      "description": "Generates 1 resource. Remove 1 ant from opponent's construction when played."
-    },
-    {
       "id": "nurse_ant",
       "name": "Nurse Ant",
       "cost": 4,

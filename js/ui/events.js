@@ -455,11 +455,7 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalAttack} attack (Total: ${player.attackPower})`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Check for abilities triggered by playing cards
-      this.checkPendingScout();
-      this.checkPendingDiscard();
-      this.checkPendingSabotage();
-      this.checkPendingTrash();
+      // Pending events will be checked by Firebase listener after sync
     }
   },
 
@@ -493,10 +489,7 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Check for scout, sabotage, and trash actions triggered by playing cards
-      this.checkPendingScout();
-      this.checkPendingSabotage();
-      this.checkPendingTrash();
+      // Pending events will be checked by Firebase listener after sync
     }
   },
 
@@ -537,8 +530,7 @@ export const EventHandlers = {
       UIRender.showMessage(`Placed ${results.length} ant(s) on construction`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Check for scout action triggered by placing on construction
-      this.checkPendingScout();
+      // Pending events will be checked by Firebase listener after sync
     }
 
     if (errors.length > 0) {
@@ -602,11 +594,7 @@ export const EventHandlers = {
       );
       this.clearSelection();
       this.syncAndRender();
-      // Check for abilities triggered by attacking (trash, scout, sabotage, steal, etc.)
-      this.checkPendingScout();
-      this.checkPendingDiscard();
-      this.checkPendingSabotage();
-      this.checkPendingTrash();
+      // Pending events will be checked by Firebase listener after sync
     } else {
       UIRender.showMessage(result.error, 'error');
     }

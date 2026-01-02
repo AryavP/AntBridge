@@ -428,6 +428,64 @@ export const GameActions = {
     };
   },
 
+  // Attack with accumulated attack power (no specific cards)
+  attackWithPower(attackerId, targetId, attackPower, cardData, constructionData) {
+    const attacker = GameState.players[attackerId];
+    const target = GameState.players[targetId];
+
+    // Validate attack
+    const validation = GameRules.canAttack(attackerId, targetId, attackPower, cardData);
+    if (!validation.valid) {
+      return { success: false, error: validation.reason };
+    }
+
+    // Attack succeeds if attack > defense - destroy one construction objective
+    const targetDefense = GameState.calculateDefense(targetId, cardData);
+
+    if (attackPower <= targetDefense) {
+      return { success: false, error: `Attack failed! Need more than ${targetDefense} attack power.` };
+    }
+
+    // Find the objective with the most ants (most progress) to destroy
+    let targetObjectiveId = null;
+    let maxAnts = 0;
+
+    Object.keys(target.constructionZone).forEach(objectiveId => {
+      const antIds = target.constructionZone[objectiveId];
+      if (antIds.length > maxAnts) {
+        maxAnts = antIds.length;
+        targetObjectiveId = objectiveId;
+      }
+    });
+
+    // If no objectives in construction, attack fails
+    if (!targetObjectiveId) {
+      return { success: false, error: `${target.name} has no objectives to attack!` };
+    }
+
+    // Destroy the objective - return all ants to discard
+    const destroyedAnts = target.constructionZone[targetObjectiveId];
+    destroyedAnts.forEach(antId => {
+      target.discard.push(antId);
+    });
+
+    const removed = destroyedAnts.length;
+    delete target.constructionZone[targetObjectiveId];
+
+    // Award VP to attacker for successful attack
+    attacker.vp += 1;
+
+    // Consume the accumulated attack power
+    attacker.attackPower = 0;
+
+    return {
+      success: true,
+      antsRemoved: removed,
+      attackPower: attackPower,
+      objectiveDestroyed: targetObjectiveId
+    };
+  },
+
   // Score any completable objectives for the next player
   scorePlayerObjectives(playerId, cardData, constructionData) {
     const player = GameState.players[playerId];

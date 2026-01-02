@@ -89,6 +89,18 @@ export const EventHandlers = {
         }
       }
 
+      // Play for Resources button
+      if (e.target.id === 'play-for-resources-btn') {
+        this.handlePlayForResources();
+        return;
+      }
+
+      // Play for Attack button
+      if (e.target.id === 'play-for-attack-btn') {
+        this.handlePlayForAttack();
+        return;
+      }
+
       // Resolve button
       if (e.target.id === 'resolve-btn') {
         this.handleResolve();
@@ -236,16 +248,34 @@ export const EventHandlers = {
   updateSelectionUI() {
     const targetInfo = document.getElementById('target-info');
     const selectedCardsInfo = document.getElementById('selected-cards-info');
+    const playForResourcesBtn = document.getElementById('play-for-resources-btn');
+    const playForAttackBtn = document.getElementById('play-for-attack-btn');
     const resolveBtn = document.getElementById('resolve-btn');
     const clearBtn = document.getElementById('clear-selection-btn');
 
     if (!targetInfo || !selectedCardsInfo || !resolveBtn || !clearBtn) return;
 
-    // Check if hand cards are selected without a target (play for resources)
+    // Check if hand cards are selected without a target (choose: play for resources or attack)
     if (this.selectedHandIndices.length > 0 && !this.selectedTarget) {
-      targetInfo.textContent = 'Playing cards for resources';
-      selectedCardsInfo.textContent = `Selected ${this.selectedHandIndices.length} card(s)`;
-      resolveBtn.style.display = 'inline-block';
+      const player = GameState.players[this.currentPlayerId];
+
+      // Calculate resources and attack from selected cards
+      let totalResources = 0;
+      let totalAttack = 0;
+      this.selectedHandIndices.forEach(idx => {
+        const cardId = player.hand[idx];
+        const card = GameState.getCardById(cardId, this.cardData);
+        if (card) {
+          totalResources += card.resources || 0;
+          totalAttack += card.attack || 0;
+        }
+      });
+
+      targetInfo.textContent = 'Choose action:';
+      selectedCardsInfo.textContent = `Selected ${this.selectedHandIndices.length} card(s) (${totalResources} resources, ${totalAttack} attack)`;
+      if (playForResourcesBtn) playForResourcesBtn.style.display = 'inline-block';
+      if (playForAttackBtn) playForAttackBtn.style.display = 'inline-block';
+      resolveBtn.style.display = 'none'; // Hide generic resolve button
       clearBtn.style.display = 'inline-block';
 
       // Update visual selection
@@ -259,6 +289,10 @@ export const EventHandlers = {
       });
       return;
     }
+
+    // Hide the play-for buttons when target is selected
+    if (playForResourcesBtn) playForResourcesBtn.style.display = 'none';
+    if (playForAttackBtn) playForAttackBtn.style.display = 'none';
 
     // Update target info
     if (this.selectedTarget) {
@@ -277,12 +311,12 @@ export const EventHandlers = {
         }
       } else if (this.selectedTarget.type === 'attack') {
         const targetPlayer = GameState.players[this.selectedTarget.targetPlayerId];
+        const player = GameState.players[this.currentPlayerId];
         targetInfo.textContent = `Attacking: ${targetPlayer.name}`;
         clearBtn.style.display = 'inline-block';
 
         if (this.selectedHandIndices.length > 0) {
-          // Calculate total attack power
-          const player = GameState.players[this.currentPlayerId];
+          // Calculate total attack power from selected cards
           let totalAttack = 0;
           this.selectedHandIndices.forEach(idx => {
             const cardId = player.hand[idx];
@@ -293,9 +327,14 @@ export const EventHandlers = {
           const targetDefense = GameState.calculateDefense(this.selectedTarget.targetPlayerId, this.cardData);
           resolveBtn.style.display = 'inline-block';
           selectedCardsInfo.textContent = `Attack: ${totalAttack} vs Defense: ${targetDefense}`;
+        } else if (player.attackPower > 0) {
+          // Can attack with accumulated attack power
+          const targetDefense = GameState.calculateDefense(this.selectedTarget.targetPlayerId, this.cardData);
+          resolveBtn.style.display = 'inline-block';
+          selectedCardsInfo.textContent = `Attack with accumulated power: ${player.attackPower} vs Defense: ${targetDefense}`;
         } else {
           resolveBtn.style.display = 'none';
-          selectedCardsInfo.textContent = 'Select cards to attack with';
+          selectedCardsInfo.textContent = 'Select cards to attack with or play cards for attack power';
         }
       } else if (this.selectedTarget.type === 'trade') {
         // Calculate total cost of trade cards
@@ -375,6 +414,52 @@ export const EventHandlers = {
       this.resolveBuyAction();
     } else if (this.selectedTarget.type === 'attack') {
       this.resolveAttackAction();
+    }
+  },
+
+  // Handle "Play for Resources" button
+  handlePlayForResources() {
+    this.resolvePlayAction();
+  },
+
+  // Handle "Play for Attack" button
+  handlePlayForAttack() {
+    if (this.selectedHandIndices.length === 0) {
+      UIRender.showMessage('No cards selected', 'error');
+      return;
+    }
+
+    const player = GameState.players[this.currentPlayerId];
+    const results = [];
+    let totalAttack = 0;
+
+    // Get all card IDs FIRST, before playing any (to avoid index shifting)
+    const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
+    const cardIds = sortedIndices.map(index => player.hand[index]);
+
+    cardIds.forEach(cardId => {
+      const card = GameState.getCardById(cardId, this.cardData);
+
+      const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
+
+      if (result.success) {
+        results.push(card.name);
+        totalAttack += card.attack || 0;
+      }
+    });
+
+    if (results.length > 0) {
+      // Add attack power to player's pool
+      player.attackPower += totalAttack;
+
+      UIRender.showMessage(`Played ${results.length} card(s) for ${totalAttack} attack (Total: ${player.attackPower})`, 'success');
+      this.clearSelection();
+      this.syncAndRender();
+      // Check for abilities triggered by playing cards
+      this.checkPendingScout();
+      this.checkPendingDiscard();
+      this.checkPendingSabotage();
+      this.checkPendingTrash();
     }
   },
 
@@ -463,13 +548,40 @@ export const EventHandlers = {
 
   // Resolve attack action
   resolveAttackAction() {
+    const player = GameState.players[this.currentPlayerId];
+
+    // Check if attacking with cards or accumulated attack power
     if (this.selectedHandIndices.length === 0) {
-      UIRender.showMessage('Select cards to attack with', 'error');
+      // Attack with accumulated attack power
+      if (player.attackPower === 0) {
+        UIRender.showMessage('No attack power available. Play cards for attack first.', 'error');
+        return;
+      }
+
+      // Attack using accumulated power (no cards, so no card abilities trigger)
+      const result = GameActions.attackWithPower(
+        this.currentPlayerId,
+        this.selectedTarget.targetPlayerId,
+        player.attackPower,
+        this.cardData,
+        this.constructionData
+      );
+
+      if (result.success) {
+        const objective = GameState.getObjectiveById(result.objectiveDestroyed, this.constructionData);
+        UIRender.showMessage(
+          `Attack successful! Destroyed "${objective.name}" with ${player.attackPower} attack power - ${result.antsRemoved} ant(s) returned to discard. +1 VP!`,
+          'success'
+        );
+        this.clearSelection();
+        this.syncAndRender();
+      } else {
+        UIRender.showMessage(result.error, 'error');
+      }
       return;
     }
 
-    const player = GameState.players[this.currentPlayerId];
-
+    // Attack with selected cards (triggers card abilities)
     // Get all card IDs FIRST, before attacking (sort descending to avoid index shifting)
     const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
     const cardIds = sortedIndices.map(idx => player.hand[idx]);

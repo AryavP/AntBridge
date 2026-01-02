@@ -27,6 +27,7 @@ export const GameState = {
       constructionZone: {}, // Objective ID -> array of ants placed on it
       completedObjectives: [], // Array of objective IDs that this player has scored
       resources: 0,
+      attackPower: 0, // Accumulated attack power for this turn
       vp: 0,
       bonuses: {
         resourcesPerTurn: 0,
@@ -146,6 +147,11 @@ export const GameState = {
         defenseBonus: 0,
         vpMultiplier: 1
       };
+
+      // Initialize attackPower if not present (for backward compatibility)
+      if (player.attackPower === undefined) {
+        player.attackPower = 0;
+      }
     });
   },
 
@@ -265,6 +271,7 @@ export const GameState = {
         constructionZone: serializedConstructionZone,
         completedObjectives: player.completedObjectives || [],
         resources: player.resources || 0,
+        attackPower: player.attackPower || 0,
         vp: player.vp || 0,
         bonuses: player.bonuses || {
           resourcesPerTurn: 0,

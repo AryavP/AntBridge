@@ -48,6 +48,7 @@ export const UIRender = {
         <div class="player-stats">
           <div>VP: <span class="vp">${vp}</span></div>
           <div>Resources: <span class="resources">${player.resources}</span></div>
+          <div>Attack: <span class="attack-power">${player.attackPower || 0}</span></div>
           <div>Deck: <span class="deck-count">${player.deck.length}</span></div>
           <div>Hand: <span class="hand-count">${player.hand.length}</span></div>
           <div>Discard: <span class="discard-count">${player.discard.length}</span></div>

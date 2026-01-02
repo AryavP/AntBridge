@@ -133,8 +133,9 @@ export const GameRules = {
     player.discard.push(...player.hand);
     player.hand = [];
 
-    // Reset resources (unused resources don't carry over)
+    // Reset resources and attack power (unused resources/attack don't carry over)
     player.resources = 0;
+    player.attackPower = 0;
 
     // Clear all pending events when turn ends
     // Events should be handled immediately and shouldn't carry over between turns

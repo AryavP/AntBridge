@@ -142,18 +142,8 @@ export const GameActions = {
 
     // Special abilities based on card ID
     if (card.id === 'queen_ant') {
+      // Queen draws 2 cards (resources come from card.resources field)
       GameRules.drawCards(playerId, 2);
-      if (!skipResources) {
-        player.resources += 2;
-      }
-    } else if (card.id === 'forager_ant') {
-      if (!skipResources) {
-        player.resources += 1;
-      }
-    } else if (card.id === 'heavy_lifter') {
-      if (!skipResources) {
-        player.resources += 2;
-      }
     }
   },
 

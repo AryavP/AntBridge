@@ -8,9 +8,9 @@
       "attack": 0,
       "defense": 0,
       "vp": 0,
-      "abilities": ["build"],
+      "abilities": [],
       "type": "worker",
-      "description": "Basic worker ant. Generates 1 resource. Can be played on construction objectives."
+      "description": "Basic worker ant. Generates 1 resource."
     },
     {
       "id": "soldier_ant",
@@ -44,9 +44,9 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["build", "resources"],
+      "abilities": ["resources"],
       "type": "worker",
-      "description": "Generates 2 resources when played. Can build."
+      "description": "Generates 2 resources when played."
     },
     {
       "id": "elite_soldier",
@@ -68,7 +68,7 @@
       "attack": 1,
       "defense": 3,
       "vp": 3,
-      "abilities": ["build", "draw", "resources"],
+      "abilities": ["draw", "resources"],
       "type": "special",
       "description": "Generates 3 resources. Draw 2 cards when played."
     },
@@ -80,9 +80,9 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["build", "double_build"],
+      "abilities": [],
       "type": "worker",
-      "description": "Generates 1 resource. Counts as 2 ants when building on construction objectives."
+      "description": "Generates 1 resource. Strong defensive ant."
     },
     {
       "id": "tunnel_ant",
@@ -128,9 +128,9 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["build", "resources"],
+      "abilities": ["resources"],
       "type": "worker",
-      "description": "Generates 3 resources when played. Strong builder."
+      "description": "Generates 3 resources when played."
     },
     {
       "id": "guard_ant",
@@ -176,9 +176,9 @@
       "attack": 0,
       "defense": 2,
       "vp": 0,
-      "abilities": ["build", "vp_bonus"],
+      "abilities": ["resources"],
       "type": "worker",
-      "description": "Generates 2 resources. Gain 1 VP when completing a construction objective."
+      "description": "Generates 2 resources when played."
     },
     {
       "id": "recycler_ant",

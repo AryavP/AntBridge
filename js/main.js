@@ -6,6 +6,7 @@ import { GameRules } from './game/rules.js';
 import { GameActions } from './game/actions.js';
 import { UIRender } from './ui/render.js';
 import { EventHandlers } from './ui/events.js';
+import { logger } from './utils/logger.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -265,17 +266,6 @@ class AntBridgeGame {
     GameState.init(this.gameId, players);
     GameRules.setupGame(this.cardData, this.starterDeckData, this.constructionData);
 
-    // Debug logging
-    console.log('Game initialized:', {
-      players: Object.keys(GameState.players),
-      tradeRow: GameState.tradeRow.length,
-      constructionRow: GameState.constructionRow.length,
-      currentPlayer: GameState.currentPlayer
-    });
-
-    const currentPlayer = GameState.getCurrentPlayer();
-    console.log('Current player hand:', currentPlayer.hand.length);
-
     // Update Firebase with full game state
     await this.gameRef.update(GameState.serialize());
 
@@ -286,11 +276,27 @@ class AntBridgeGame {
   // Listen to game updates from Firebase
   listenToGame() {
     let gameInitialized = false;
+    let lastUpdateTime = Date.now();
 
     this.gameRef.on('value', (snapshot) => {
       const gameData = snapshot.val();
+      const currentTime = Date.now();
+      const timeSinceLastUpdate = currentTime - lastUpdateTime;
 
       if (!gameData) return;
+
+      // Log Firebase listener firing
+      logger.firebaseUpdate(gameInitialized ? 'remote update' : 'initial load', {
+        currentPlayer: gameData.currentPlayer,
+        turnPhase: gameData.turnPhase,
+        hasPendingScout: !!gameData.pendingScout,
+        hasPendingDiscard: !!gameData.pendingDiscard,
+        hasPendingSabotage: !!gameData.pendingSabotage,
+        hasPendingTrash: !!gameData.pendingTrash,
+        timeSinceLastUpdate: timeSinceLastUpdate
+      });
+
+      lastUpdateTime = currentTime;
 
       // Update waiting room if in lobby
       if (gameData.status === 'waiting') {
@@ -305,8 +311,10 @@ class AntBridgeGame {
         if (!gameInitialized) {
           this.showGameScreen();
           gameInitialized = true;
+          logger.info('GAME', 'Game screen initialized');
         } else {
           // Just update the rendering, don't re-initialize
+          logger.debug('UI', 'Re-rendering game from Firebase update');
           UIRender.renderGame();
           // Restore selection UI after rendering
           if (window.eventHandlers) {
@@ -358,6 +366,9 @@ class AntBridgeGame {
     if (waitingRoom) waitingRoom.style.display = 'none';
     if (gameScreen) gameScreen.style.display = 'block';
 
+    // Initialize logger with player ID
+    logger.init(this.playerId);
+
     // Initialize UI
     UIRender.init(this.cardData, this.constructionData, this.playerId);
     EventHandlers.init(this.cardData, this.constructionData, this.playerId, (state) => {
@@ -374,22 +385,18 @@ class AntBridgeGame {
   // Update game state to Firebase
   async updateGameState(state) {
     try {
-      console.log('Updating Firebase with state:', state);
-
-      // Log specifically the constructionZone data being sent
-      if (state.players) {
-        Object.keys(state.players).forEach(playerId => {
-          if (state.players[playerId].constructionZone) {
-            console.log(`Sending to Firebase - player ${playerId} constructionZone:`,
-                       state.players[playerId].constructionZone);
-          }
-        });
-      }
+      logger.debug('FIREBASE', 'Updating Firebase with local state', {
+        currentPlayer: state.currentPlayer,
+        hasPendingScout: !!state.pendingScout,
+        hasPendingDiscard: !!state.pendingDiscard,
+        hasPendingSabotage: !!state.pendingSabotage,
+        hasPendingTrash: !!state.pendingTrash
+      });
 
       await this.gameRef.update(state);
-      console.log('Firebase update completed');
+      logger.debug('FIREBASE', 'Firebase update completed');
     } catch (error) {
-      console.error('Error updating game state:', error);
+      logger.error('FIREBASE', 'Error updating game state', { error: error.message });
     }
   }
 

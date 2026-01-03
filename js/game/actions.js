@@ -3,6 +3,7 @@
 
 import { GameState } from './state.js';
 import { GameRules } from './rules.js';
+import { logger, LogCategory } from '../utils/logger.js';
 
 export const GameActions = {
   // Play a card from hand
@@ -80,11 +81,17 @@ export const GameActions = {
           const topCards = player.deck.splice(-3);
           if (topCards.length > 0) {
             // Store scout state for UI to handle
+            const eventId = `scout_${Date.now()}_${Math.random()}`;
             GameState.pendingScout = {
               playerId: playerId,
               cards: topCards,
-              eventId: `scout_${Date.now()}_${Math.random()}`
+              eventId: eventId
             };
+            logger.eventInitiated('scout', {
+              playerId: playerId,
+              eventId: eventId,
+              cardCount: topCards.length
+            });
           }
           break;
 
@@ -99,20 +106,31 @@ export const GameActions = {
 
           // Sabotage the first opponent with construction (in 2-player, this is the only opponent)
           if (opponents.length > 0) {
+            const eventId = `sabotage_${Date.now()}_${Math.random()}`;
             GameState.pendingSabotage = {
               playerId: opponents[0],
               saboteur: playerId,
-              eventId: `sabotage_${Date.now()}_${Math.random()}`
+              eventId: eventId
             };
+            logger.eventInitiated('sabotage', {
+              playerId: opponents[0],
+              saboteur: playerId,
+              eventId: eventId
+            });
           }
           break;
 
         case 'trash':
           // Allow player to trash a card from hand or discard pile
+          const trashEventId = `trash_${Date.now()}_${Math.random()}`;
           GameState.pendingTrash = {
             playerId: playerId,
-            eventId: `trash_${Date.now()}_${Math.random()}`
+            eventId: trashEventId
           };
+          logger.eventInitiated('trash', {
+            playerId: playerId,
+            eventId: trashEventId
+          });
           break;
 
         case 'steal':
@@ -122,14 +140,19 @@ export const GameActions = {
             const opponentId = opponentIds[0]; // In 2-player, just the one opponent
             const opponent = GameState.players[opponentId];
             if (opponent.hand.length > 0) {
-              console.log('Setting pendingDiscard for player', opponentId);
+              const discardEventId = `discard_${Date.now()}_${Math.random()}`;
               GameState.pendingDiscard = {
                 playerId: opponentId,
                 reason: 'stolen',
                 attackerId: playerId,
-                eventId: `discard_${Date.now()}_${Math.random()}`
+                eventId: discardEventId
               };
-              console.log('pendingDiscard set:', GameState.pendingDiscard);
+              logger.eventInitiated('steal/discard', {
+                playerId: opponentId,
+                attackerId: playerId,
+                eventId: discardEventId,
+                opponentHandSize: opponent.hand.length
+              });
             }
           }
           break;
@@ -198,9 +221,6 @@ export const GameActions = {
     // Execute card abilities (draw, scout, etc.) but skip resources
     this.executeCardAbilities(playerId, card, cardData, true);
 
-    console.log(`Placed ${card.name} on ${objective.name}. Construction zone now has ${player.constructionZone[objectiveId].length} ants.`);
-    console.log('Construction zone:', player.constructionZone);
-
     // Don't auto-complete - objectives will be scored at the start of the builder's next turn
     // This gives other players a chance to attack the objective
 
@@ -216,7 +236,6 @@ export const GameActions = {
 
     // Scrap (permanently remove) all ants used in this construction
     const antsToScrap = player.constructionZone[objectiveId] || [];
-    console.log(`Scrapping ${antsToScrap.length} ants from completed construction`);
 
     // Remove the construction zone entry (ants are not returned to discard, they're scrapped)
     delete player.constructionZone[objectiveId];
@@ -490,7 +509,6 @@ export const GameActions = {
 
     // Score all completable objectives
     objectivesToScore.forEach(objectiveId => {
-      console.log(`Scoring objective ${objectiveId} for player ${playerId}`);
       this.completeObjective(playerId, objectiveId, cardData, constructionData);
     });
 

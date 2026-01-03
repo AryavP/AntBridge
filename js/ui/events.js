@@ -6,6 +6,7 @@ import { GameActions } from '../game/actions.js';
 import { GameRules } from '../game/rules.js';
 import { UIRender } from './render.js';
 import { ModalManager } from './modal.js';
+import { logger, LogCategory } from '../utils/logger.js';
 
 export const EventHandlers = {
   cardData: null,
@@ -34,7 +35,6 @@ export const EventHandlers = {
       this.clearSelection();
       this.attachEventListeners();
       this.initialized = true;
-      console.log('Event listeners attached');
     }
   },
 
@@ -48,8 +48,6 @@ export const EventHandlers = {
 
   // Attach all event listeners
   attachEventListeners() {
-    console.log('START of attachEventListeners');
-
     // Delegate click events
     document.addEventListener('click', (e) => {
       // Check if clicked element is a card
@@ -122,42 +120,44 @@ export const EventHandlers = {
       // Refresh trade row button (for testing)
       const refreshBtn = e.target.closest('#refresh-trade-btn');
       if (refreshBtn || e.target.id === 'refresh-trade-btn') {
-        console.log('Button click detected!');
         this.handleRefreshTrade();
         return;
       }
     });
 
-    console.log('END of click event listener setup');
-    console.log('About to set up refresh button listener...');
-
     // Direct listener for refresh button (for debugging)
     setTimeout(() => {
-      console.log('setTimeout executed!');
       const refreshBtn = document.getElementById('refresh-trade-btn');
-      console.log('Looking for refresh button:', refreshBtn);
       if (refreshBtn) {
-        console.log('Refresh button found! Adding direct listener.');
         refreshBtn.addEventListener('click', () => {
-          console.log('Direct listener fired!');
           this.handleRefreshTrade();
         });
-      } else {
-        console.log('Refresh button NOT found in DOM!');
       }
     }, 1000);
-
-    console.log('setTimeout scheduled.');
   },
 
   // Handle clicking a card in hand
   handleHandCardClick(cardElement) {
+    const handIndex = parseInt(cardElement.dataset.handIndex);
+    const player = GameState.players[this.currentPlayerId];
+    const cardId = player?.hand[handIndex];
+
     if (GameState.currentPlayer !== this.currentPlayerId) {
+      logger.uiInteraction('hand-card-click', false, {
+        reason: 'not your turn',
+        cardIndex: handIndex,
+        cardId: cardId,
+        currentPlayer: GameState.currentPlayer,
+        localPlayer: this.currentPlayerId
+      });
       UIRender.showMessage("It's not your turn!", 'error');
       return;
     }
 
-    const handIndex = parseInt(cardElement.dataset.handIndex);
+    logger.uiInteraction('hand-card-click', true, {
+      cardIndex: handIndex,
+      cardId: cardId
+    });
 
     // Toggle selection
     const idx = this.selectedHandIndices.indexOf(handIndex);
@@ -609,23 +609,16 @@ export const EventHandlers = {
 
     const player = GameState.players[this.currentPlayerId];
 
-    console.log('=== RESOLVE BUY ACTION ===');
-    console.log('Selected hand indices:', this.selectedHandIndices);
-    console.log('Current hand:', player.hand.map((id, idx) => `[${idx}]: ${GameState.getCardById(id, this.cardData)?.name}`));
-
     // First, play selected hand cards for resources (sort descending)
     let resourcesGained = 0;
     if (this.selectedHandIndices.length > 0) {
       const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
-      console.log('Sorted indices (descending):', sortedIndices);
 
       // Get all card IDs FIRST, before playing any (to avoid index shifting)
       const cardIds = sortedIndices.map(index => player.hand[index]);
-      console.log('Card IDs to play:', cardIds.map(id => GameState.getCardById(id, this.cardData)?.name));
 
       cardIds.forEach(cardId => {
         const card = GameState.getCardById(cardId, this.cardData);
-        console.log(`Playing card: ${card?.name} (ID: ${cardId})`);
 
         const result = GameActions.playCard(this.currentPlayerId, cardId, this.cardData);
         if (result.success && card) {
@@ -680,9 +673,11 @@ export const EventHandlers = {
       return;
     }
 
+    const oldPlayer = GameState.currentPlayer;
     const result = GameActions.endTurn(this.currentPlayerId, this.cardData, this.constructionData);
 
     if (result.success) {
+      logger.turnChange(oldPlayer, GameState.currentPlayer, GameState.turnPhase);
       UIRender.showMessage('Turn ended', 'success');
       this.clearSelection();
       this.syncAndRender();
@@ -693,10 +688,6 @@ export const EventHandlers = {
 
   // Refresh trade row (for testing)
   handleRefreshTrade() {
-    console.log('Refresh trade clicked!');
-    console.log('Trade row before:', [...GameState.tradeRow]);
-    console.log('Market deck size before:', GameState.marketDeck.length);
-
     // Put current trade row cards back into market deck
     GameState.marketDeck.push(...GameState.tradeRow);
 
@@ -711,9 +702,6 @@ export const EventHandlers = {
 
     // Refill from market deck
     GameRules.fillTradeRow();
-
-    console.log('Trade row after:', [...GameState.tradeRow]);
-    console.log('Market deck size after:', GameState.marketDeck.length);
 
     UIRender.showMessage('Trade row refreshed', 'success');
     this.syncAndRender();
@@ -732,11 +720,17 @@ export const EventHandlers = {
   async checkPendingScout() {
     // Prevent concurrent scout modals
     if (this.isProcessingScout) {
-      console.log('Already processing scout, skipping...');
+      logger.eventSkipped('scout', 'already processing', GameState.pendingScout);
       return;
     }
 
-    console.log('Checking pending scout:', GameState.pendingScout);
+    logger.debug(LogCategory.EVENT, 'checkPendingScout called', {
+      hasPendingScout: !!GameState.pendingScout,
+      eventId: GameState.pendingScout?.eventId,
+      targetPlayer: GameState.pendingScout?.playerId,
+      currentPlayer: GameState.currentPlayer,
+      localPlayer: this.currentPlayerId
+    });
 
     // Only show modal if it's this player's pending action AND it's their turn
     if (GameState.pendingScout &&
@@ -746,7 +740,7 @@ export const EventHandlers = {
       // Check if we've already processed this event
       const eventId = GameState.pendingScout.eventId;
       if (eventId && this.processedEvents.has(eventId)) {
-        console.log('Scout event already processed, clearing stale state:', eventId);
+        logger.eventSkipped('scout', 'already processed', { eventId });
         GameState.pendingScout = null;
         this.syncAndRender();
         return;
@@ -758,7 +752,14 @@ export const EventHandlers = {
       }
 
       this.isProcessingScout = true;
-      console.log('Showing scout modal for', GameState.pendingScout.cards);
+      logger.eventProcessing('scout', {
+        eventId: eventId,
+        playerId: this.currentPlayerId,
+        currentPlayer: GameState.currentPlayer,
+        cardCount: GameState.pendingScout.cards.length
+      });
+
+      logger.modalShow('scout', eventId);
 
       try {
         const selectedCardId = await ModalManager.showCardSelection(
@@ -770,6 +771,9 @@ export const EventHandlers = {
         // Complete the scout action (this clears pendingScout internally)
         const result = GameActions.completeScout(selectedCardId);
 
+        logger.eventCompleted('scout', { eventId, playerId: this.currentPlayerId }, result);
+        logger.modalClose('scout', eventId, true);
+
         if (result.success) {
           UIRender.showMessage('Card added to hand', 'success');
         } else {
@@ -778,7 +782,8 @@ export const EventHandlers = {
           UIRender.showMessage(result.error || 'Scout failed', 'error');
         }
       } catch (error) {
-        console.error('Scout selection error:', error);
+        logger.error(LogCategory.EVENT, 'Scout selection error', { error: error.message, eventId });
+        logger.modalClose('scout', eventId, false);
         // User cancelled - put cards back on top of deck
         if (GameState.pendingScout) {
           const player = GameState.players[GameState.pendingScout.playerId];
@@ -791,6 +796,13 @@ export const EventHandlers = {
         // Always sync after processing to update Firebase
         this.syncAndRender();
       }
+    } else if (GameState.pendingScout) {
+      logger.eventSkipped('scout', 'not for this player or not their turn', {
+        eventId: GameState.pendingScout.eventId,
+        targetPlayer: GameState.pendingScout.playerId,
+        currentPlayer: GameState.currentPlayer,
+        localPlayer: this.currentPlayerId
+      });
     }
   },
 
@@ -798,18 +810,25 @@ export const EventHandlers = {
   async checkPendingDiscard() {
     // Prevent concurrent discard modals
     if (this.isProcessingDiscard) {
-      console.log('Already processing discard, skipping...');
+      logger.eventSkipped('discard', 'already processing', GameState.pendingDiscard);
       return;
     }
 
-    console.log('Checking pending discard:', GameState.pendingDiscard);
+    logger.debug(LogCategory.EVENT, 'checkPendingDiscard called', {
+      hasPendingDiscard: !!GameState.pendingDiscard,
+      eventId: GameState.pendingDiscard?.eventId,
+      targetPlayer: GameState.pendingDiscard?.playerId,
+      attackerId: GameState.pendingDiscard?.attackerId,
+      currentPlayer: GameState.currentPlayer,
+      localPlayer: this.currentPlayerId
+    });
 
     // Show modal immediately when this player has a pending discard (regardless of whose turn it is)
     if (GameState.pendingDiscard && GameState.pendingDiscard.playerId === this.currentPlayerId) {
       // Check if we've already processed this event
       const eventId = GameState.pendingDiscard.eventId;
       if (eventId && this.processedEvents.has(eventId)) {
-        console.log('Discard event already processed, clearing stale state:', eventId);
+        logger.eventSkipped('discard', 'already processed', { eventId });
         GameState.pendingDiscard = null;
         this.syncAndRender();
         return;
@@ -821,15 +840,23 @@ export const EventHandlers = {
       }
 
       this.isProcessingDiscard = true;
-      console.log('Showing discard modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
+      logger.eventProcessing('discard', {
+        eventId: eventId,
+        playerId: this.currentPlayerId,
+        currentPlayer: GameState.currentPlayer,
+        handSize: player.hand.length
+      });
+
       if (player.hand.length === 0) {
-        // No cards to discard
+        logger.eventSkipped('discard', 'no cards in hand', { eventId });
         GameState.pendingDiscard = null;
         this.isProcessingDiscard = false;
         return;
       }
+
+      logger.modalShow('discard', eventId);
 
       try {
         const selectedCardId = await ModalManager.showCardSelection(
@@ -841,6 +868,9 @@ export const EventHandlers = {
         // Complete the forced discard (this clears pendingDiscard internally)
         const result = GameActions.completeDiscard(selectedCardId);
 
+        logger.eventCompleted('discard', { eventId, playerId: this.currentPlayerId }, result);
+        logger.modalClose('discard', eventId, true);
+
         if (result.success) {
           UIRender.showMessage('Card discarded', 'info');
         } else {
@@ -849,7 +879,8 @@ export const EventHandlers = {
           UIRender.showMessage(result.error || 'Discard failed', 'error');
         }
       } catch (error) {
-        console.error('Discard selection error:', error);
+        logger.error(LogCategory.EVENT, 'Discard selection error', { error: error.message, eventId });
+        logger.modalClose('discard', eventId, false);
         // User cancelled - auto-discard first card
         if (GameState.pendingDiscard && player.hand.length > 0) {
           GameActions.completeDiscard(player.hand[0]);
@@ -863,6 +894,12 @@ export const EventHandlers = {
         // Always sync after processing to update Firebase
         this.syncAndRender();
       }
+    } else if (GameState.pendingDiscard) {
+      logger.eventSkipped('discard', 'not for this player', {
+        eventId: GameState.pendingDiscard.eventId,
+        targetPlayer: GameState.pendingDiscard.playerId,
+        localPlayer: this.currentPlayerId
+      });
     }
   },
 
@@ -870,18 +907,25 @@ export const EventHandlers = {
   async checkPendingSabotage() {
     // Prevent concurrent sabotage modals
     if (this.isProcessingSabotage) {
-      console.log('Already processing sabotage, skipping...');
+      logger.eventSkipped('sabotage', 'already processing', GameState.pendingSabotage);
       return;
     }
 
-    console.log('Checking pending sabotage:', GameState.pendingSabotage);
+    logger.debug(LogCategory.EVENT, 'checkPendingSabotage called', {
+      hasPendingSabotage: !!GameState.pendingSabotage,
+      eventId: GameState.pendingSabotage?.eventId,
+      targetPlayer: GameState.pendingSabotage?.playerId,
+      saboteur: GameState.pendingSabotage?.saboteur,
+      currentPlayer: GameState.currentPlayer,
+      localPlayer: this.currentPlayerId
+    });
 
     // Show modal immediately when this player has a pending sabotage (regardless of whose turn it is)
     if (GameState.pendingSabotage && GameState.pendingSabotage.playerId === this.currentPlayerId) {
       // Check if we've already processed this event
       const eventId = GameState.pendingSabotage.eventId;
       if (eventId && this.processedEvents.has(eventId)) {
-        console.log('Sabotage event already processed, clearing stale state:', eventId);
+        logger.eventSkipped('sabotage', 'already processed', { eventId });
         GameState.pendingSabotage = null;
         this.syncAndRender();
         return;
@@ -893,7 +937,6 @@ export const EventHandlers = {
       }
 
       this.isProcessingSabotage = true;
-      console.log('Showing sabotage modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
       // Collect all ants from all construction zones
@@ -903,13 +946,22 @@ export const EventHandlers = {
         allAnts.push(...ants);
       });
 
+      logger.eventProcessing('sabotage', {
+        eventId: eventId,
+        playerId: this.currentPlayerId,
+        currentPlayer: GameState.currentPlayer,
+        antCount: allAnts.length
+      });
+
       if (allAnts.length === 0) {
-        // No ants to remove
+        logger.eventSkipped('sabotage', 'no ants in construction', { eventId });
         GameState.pendingSabotage = null;
         this.isProcessingSabotage = false;
         this.syncAndRender();
         return;
       }
+
+      logger.modalShow('sabotage', eventId);
 
       try {
         const selectedAntId = await ModalManager.showCardSelection(
@@ -921,6 +973,9 @@ export const EventHandlers = {
         // Complete the sabotage (this clears pendingSabotage internally)
         const result = GameActions.completeSabotage(selectedAntId);
 
+        logger.eventCompleted('sabotage', { eventId, playerId: this.currentPlayerId }, result);
+        logger.modalClose('sabotage', eventId, true);
+
         if (result.success) {
           UIRender.showMessage('Ant removed from construction', 'info');
         } else {
@@ -929,7 +984,8 @@ export const EventHandlers = {
           UIRender.showMessage(result.error || 'Sabotage failed', 'error');
         }
       } catch (error) {
-        console.error('Sabotage selection error:', error);
+        logger.error(LogCategory.EVENT, 'Sabotage selection error', { error: error.message, eventId });
+        logger.modalClose('sabotage', eventId, false);
         // User cancelled - auto-remove first ant
         if (GameState.pendingSabotage && allAnts.length > 0) {
           GameActions.completeSabotage(allAnts[0]);
@@ -943,6 +999,12 @@ export const EventHandlers = {
         // Always sync after processing to update Firebase
         this.syncAndRender();
       }
+    } else if (GameState.pendingSabotage) {
+      logger.eventSkipped('sabotage', 'not for this player', {
+        eventId: GameState.pendingSabotage.eventId,
+        targetPlayer: GameState.pendingSabotage.playerId,
+        localPlayer: this.currentPlayerId
+      });
     }
   },
 
@@ -950,11 +1012,17 @@ export const EventHandlers = {
   async checkPendingTrash() {
     // Prevent concurrent trash modals
     if (this.isProcessingTrash) {
-      console.log('Already processing trash, skipping...');
+      logger.eventSkipped('trash', 'already processing', GameState.pendingTrash);
       return;
     }
 
-    console.log('Checking pending trash:', GameState.pendingTrash);
+    logger.debug(LogCategory.EVENT, 'checkPendingTrash called', {
+      hasPendingTrash: !!GameState.pendingTrash,
+      eventId: GameState.pendingTrash?.eventId,
+      targetPlayer: GameState.pendingTrash?.playerId,
+      currentPlayer: GameState.currentPlayer,
+      localPlayer: this.currentPlayerId
+    });
 
     // Only show modal if it's this player's pending action AND it's their turn
     if (GameState.pendingTrash &&
@@ -964,7 +1032,7 @@ export const EventHandlers = {
       // Check if we've already processed this event
       const eventId = GameState.pendingTrash.eventId;
       if (eventId && this.processedEvents.has(eventId)) {
-        console.log('Trash event already processed, clearing stale state:', eventId);
+        logger.eventSkipped('trash', 'already processed', { eventId });
         GameState.pendingTrash = null;
         this.syncAndRender();
         return;
@@ -976,19 +1044,27 @@ export const EventHandlers = {
       }
 
       this.isProcessingTrash = true;
-      console.log('Showing trash modal for player', this.currentPlayerId);
       const player = GameState.players[this.currentPlayerId];
 
       // Collect cards from hand and discard pile
       const availableCards = [...player.hand, ...player.discard];
 
+      logger.eventProcessing('trash', {
+        eventId: eventId,
+        playerId: this.currentPlayerId,
+        currentPlayer: GameState.currentPlayer,
+        availableCardCount: availableCards.length
+      });
+
       if (availableCards.length === 0) {
-        // No cards to trash
+        logger.eventSkipped('trash', 'no cards available', { eventId });
         GameState.pendingTrash = null;
         this.isProcessingTrash = false;
         this.syncAndRender();
         return;
       }
+
+      logger.modalShow('trash', eventId);
 
       try {
         const selectedCardId = await ModalManager.showCardSelection(
@@ -1000,6 +1076,9 @@ export const EventHandlers = {
         // Complete the trash (this clears pendingTrash internally)
         const result = GameActions.completeTrash(selectedCardId);
 
+        logger.eventCompleted('trash', { eventId, playerId: this.currentPlayerId }, result);
+        logger.modalClose('trash', eventId, true);
+
         if (result.success) {
           UIRender.showMessage(`Card trashed from ${result.location}`, 'success');
         } else {
@@ -1008,7 +1087,8 @@ export const EventHandlers = {
           UIRender.showMessage(result.error || 'Trash failed', 'error');
         }
       } catch (error) {
-        console.error('Trash selection error:', error);
+        logger.error(LogCategory.EVENT, 'Trash selection error', { error: error.message, eventId });
+        logger.modalClose('trash', eventId, false);
         // User cancelled - clear pending trash
         GameState.pendingTrash = null;
       } finally {
@@ -1017,6 +1097,13 @@ export const EventHandlers = {
         // Always sync after processing to update Firebase
         this.syncAndRender();
       }
+    } else if (GameState.pendingTrash) {
+      logger.eventSkipped('trash', 'not for this player or not their turn', {
+        eventId: GameState.pendingTrash.eventId,
+        targetPlayer: GameState.pendingTrash.playerId,
+        currentPlayer: GameState.currentPlayer,
+        localPlayer: this.currentPlayerId
+      });
     }
   }
 };

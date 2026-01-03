@@ -61,15 +61,6 @@ export const GameState = {
 
   // Load state from Firebase
   loadState(stateData) {
-    console.log('Loading state from Firebase:', stateData);
-
-    // Log the raw constructionZone data from Firebase BEFORE any processing
-    if (stateData.players) {
-      Object.keys(stateData.players).forEach(pid => {
-        console.log(`RAW Firebase data for player ${pid} constructionZone:`, stateData.players[pid].constructionZone);
-      });
-    }
-
     Object.assign(this, stateData);
 
     // Helper to convert Firebase object to array
@@ -91,7 +82,6 @@ export const GameState = {
     // Ensure player arrays are initialized
     Object.keys(this.players || {}).forEach(playerId => {
       const player = this.players[playerId];
-      console.log(`Loading player ${playerId}, constructionZone from Firebase:`, player.constructionZone);
 
       player.deck = toArray(player.deck);
       player.hand = toArray(player.hand);
@@ -104,7 +94,6 @@ export const GameState = {
       if (player.constructionZone && typeof player.constructionZone === 'object') {
         // Check if constructionZone itself was converted to an array by Firebase
         if (Array.isArray(player.constructionZone)) {
-          console.log('WARNING: constructionZone is an array from Firebase, attempting to reconstruct');
           // Firebase converted our object to an array - convert back
           const reconstructed = {};
           player.constructionZone.forEach((value, index) => {
@@ -112,35 +101,27 @@ export const GameState = {
               // This array element should be an objective's ants
               // But we've lost the objectiveId - this is a Firebase limitation
               // We need to prevent this from happening in the first place
-              console.error('Cannot reconstruct constructionZone from array - objective IDs lost');
             }
           });
           player.constructionZone = reconstructed;
         } else {
           // constructionZone is an object (correct structure)
           Object.keys(player.constructionZone).forEach(objectiveId => {
-            console.log(`Converting constructionZone[${objectiveId}]:`, player.constructionZone[objectiveId]);
             const ants = player.constructionZone[objectiveId];
 
             // Convert to array if it's an object with numeric keys
             if (ants && !Array.isArray(ants) && typeof ants === 'object') {
               player.constructionZone[objectiveId] = toArray(ants);
-              console.log(`Converted from object to array:`, player.constructionZone[objectiveId]);
             } else if (!ants) {
-              console.log(`Ants is null/undefined for ${objectiveId}, removing entry`);
               delete player.constructionZone[objectiveId];
             } else if (!Array.isArray(ants)) {
-              console.log(`Invalid ants structure for ${objectiveId}, resetting to empty array`);
               player.constructionZone[objectiveId] = [];
             }
           });
         }
       } else {
-        console.log('constructionZone is not an object, resetting to {}');
         player.constructionZone = {};
       }
-
-      console.log(`After conversion, player ${playerId} constructionZone:`, player.constructionZone);
 
       player.bonuses = player.bonuses || {
         resourcesPerTurn: 0,
@@ -248,8 +229,6 @@ export const GameState = {
     Object.keys(this.players).forEach(playerId => {
       const player = this.players[playerId];
 
-      console.log(`Serializing player ${playerId}, constructionZone:`, player.constructionZone);
-
       // Ensure constructionZone arrays are properly formatted
       const serializedConstructionZone = {};
       if (player.constructionZone) {
@@ -259,8 +238,6 @@ export const GameState = {
           serializedConstructionZone[objectiveId] = Array.isArray(ants) ? ants : [];
         });
       }
-
-      console.log(`Serialized constructionZone:`, serializedConstructionZone);
 
       serializedPlayers[playerId] = {
         id: player.id,

@@ -63,6 +63,14 @@ export const GameState = {
   loadState(stateData) {
     Object.assign(this, stateData);
 
+    // Firebase omits null/undefined properties from snapshots, so Object.assign
+    // won't overwrite existing values with null. Explicitly reset pending events
+    // to prevent stale local state from persisting.
+    this.pendingScout = stateData.pendingScout || null;
+    this.pendingDiscard = stateData.pendingDiscard || null;
+    this.pendingSabotage = stateData.pendingSabotage || null;
+    this.pendingTrash = stateData.pendingTrash || null;
+
     // Helper to convert Firebase object to array
     const toArray = (obj) => {
       if (Array.isArray(obj)) return obj;

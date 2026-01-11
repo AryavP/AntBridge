@@ -742,7 +742,7 @@ export const EventHandlers = {
       if (eventId && this.processedEvents.has(eventId)) {
         logger.eventSkipped('scout', 'already processed', { eventId });
         GameState.pendingScout = null;
-        this.syncAndRender();
+        // Don't sync to Firebase - would create infinite loop with other client
         return;
       }
 
@@ -830,7 +830,7 @@ export const EventHandlers = {
       if (eventId && this.processedEvents.has(eventId)) {
         logger.eventSkipped('discard', 'already processed', { eventId });
         GameState.pendingDiscard = null;
-        this.syncAndRender();
+        // Don't sync to Firebase - would create infinite loop with other client
         return;
       }
 
@@ -927,7 +927,7 @@ export const EventHandlers = {
       if (eventId && this.processedEvents.has(eventId)) {
         logger.eventSkipped('sabotage', 'already processed', { eventId });
         GameState.pendingSabotage = null;
-        this.syncAndRender();
+        // Don't sync to Firebase - would create infinite loop with other client
         return;
       }
 
@@ -1034,7 +1034,7 @@ export const EventHandlers = {
       if (eventId && this.processedEvents.has(eventId)) {
         logger.eventSkipped('trash', 'already processed', { eventId });
         GameState.pendingTrash = null;
-        this.syncAndRender();
+        // Don't sync to Firebase - would create infinite loop with other client
         return;
       }
 

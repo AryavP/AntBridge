@@ -955,6 +955,16 @@ body {
     margin-top: 8px;
 }
 
+.selectable-card.from-discard {
+    background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+}
+
+.selectable-card.from-discard .card-name,
+.selectable-card.from-discard .card-cost,
+.selectable-card.from-discard .card-description {
+    color: #fff;
+}
+
 .modal-actions {
     display: flex;
     justify-content: center;

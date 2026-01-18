@@ -1049,6 +1049,9 @@ export const EventHandlers = {
       // Collect cards from hand and discard pile
       const availableCards = [...player.hand, ...player.discard];
 
+      // Track where discard cards start in the combined array
+      const discardStartIndex = player.hand.length;
+
       logger.eventProcessing('trash', {
         eventId: eventId,
         playerId: this.currentPlayerId,
@@ -1070,7 +1073,7 @@ export const EventHandlers = {
         const selectedCardId = await ModalManager.showCardSelection(
           availableCards,
           this.cardData,
-          { title: 'Choose a card to trash (permanently remove from your deck)' }
+          { title: 'Choose a card to trash (permanently remove from your deck)', discardStartIndex }
         );
 
         // Complete the trash (this clears pendingTrash internally)

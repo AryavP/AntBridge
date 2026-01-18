@@ -17,12 +17,13 @@ export const ModalManager = {
       cardsContainer.innerHTML = '';
 
       // Render cards
-      cards.forEach(cardId => {
+      cards.forEach((cardId, index) => {
         const card = this.getCardById(cardId, cardData);
         if (!card) return;
 
         const cardDiv = document.createElement('div');
-        cardDiv.className = 'selectable-card';
+        const isFromDiscard = options.discardStartIndex !== undefined && index >= options.discardStartIndex;
+        cardDiv.className = 'selectable-card' + (isFromDiscard ? ' from-discard' : '');
         cardDiv.dataset.cardId = cardId;
 
         cardDiv.innerHTML = `

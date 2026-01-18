@@ -191,6 +191,18 @@
       "abilities": ["trash"],
       "type": "support",
       "description": "Generates 2 resources. Trash a card from your hand or discard pile, permanently removing it from your deck."
+    },
+    {
+      "id": "bugs_aldrin",
+      "name": "Bugs Aldrin",
+      "cost": 4,
+      "resources": 1,
+      "attack": 0,
+      "defense": 3,
+      "vp": 0,
+      "abilities": ["return"],
+      "type": "support",
+      "description": "High defense. Returns to your discard pile after completing a construction instead of being scrapped."
     }
   ]
 }

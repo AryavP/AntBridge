@@ -234,10 +234,18 @@ export const GameActions = {
 
     if (!objective) return;
 
-    // Scrap (permanently remove) all ants used in this construction
-    const antsToScrap = player.constructionZone[objectiveId] || [];
+    // Process ants used in construction
+    const antsUsed = player.constructionZone[objectiveId] || [];
+    antsUsed.forEach(antId => {
+      const card = GameState.getCardById(antId, cardData);
+      if (card && card.abilities && card.abilities.includes('return')) {
+        // Ants with "return" ability go to discard pile instead of being scrapped
+        player.discard.push(antId);
+      }
+      // Otherwise, the ant is scrapped (permanently removed from game)
+    });
 
-    // Remove the construction zone entry (ants are not returned to discard, they're scrapped)
+    // Remove the construction zone entry
     delete player.constructionZone[objectiveId];
 
     // Add to completed objectives (so it shows as scored under the player's name)

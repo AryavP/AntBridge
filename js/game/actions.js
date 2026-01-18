@@ -617,7 +617,8 @@ export const GameActions = {
   },
 
   // Complete trash with player's card selection
-  completeTrash(selectedCardId) {
+  // location parameter specifies where to remove the card from ('hand' or 'discard')
+  completeTrash(selectedCardId, location) {
     if (!GameState.pendingTrash) {
       return { success: false, error: "No pending trash" };
     }
@@ -625,25 +626,24 @@ export const GameActions = {
     const { playerId } = GameState.pendingTrash;
     const player = GameState.players[playerId];
 
-    // Try to find and remove card from hand
-    const handIndex = player.hand.indexOf(selectedCardId);
-    if (handIndex !== -1) {
-      player.hand.splice(handIndex, 1);
-      // Card is permanently removed (not added to discard)
-      GameState.pendingTrash = null;
-      return { success: true, location: 'hand' };
+    // Remove from the specified location
+    if (location === 'hand') {
+      const handIndex = player.hand.indexOf(selectedCardId);
+      if (handIndex !== -1) {
+        player.hand.splice(handIndex, 1);
+        GameState.pendingTrash = null;
+        return { success: true, location: 'hand' };
+      }
+    } else if (location === 'discard') {
+      const discardIndex = player.discard.indexOf(selectedCardId);
+      if (discardIndex !== -1) {
+        player.discard.splice(discardIndex, 1);
+        GameState.pendingTrash = null;
+        return { success: true, location: 'discard' };
+      }
     }
 
-    // Try to find and remove card from discard
-    const discardIndex = player.discard.indexOf(selectedCardId);
-    if (discardIndex !== -1) {
-      player.discard.splice(discardIndex, 1);
-      // Card is permanently removed (not added back anywhere)
-      GameState.pendingTrash = null;
-      return { success: true, location: 'discard' };
-    }
-
-    return { success: false, error: "Card not found in hand or discard" };
+    return { success: false, error: "Card not found in specified location" };
   },
 
   // End current player's turn

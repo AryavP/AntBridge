@@ -762,14 +762,14 @@ export const EventHandlers = {
       logger.modalShow('scout', eventId);
 
       try {
-        const selectedCardId = await ModalManager.showCardSelection(
+        const selection = await ModalManager.showCardSelection(
           GameState.pendingScout.cards,
           this.cardData,
           { title: 'Scout: Choose a card to add to your hand' }
         );
 
         // Complete the scout action (this clears pendingScout internally)
-        const result = GameActions.completeScout(selectedCardId);
+        const result = GameActions.completeScout(selection.cardId);
 
         logger.eventCompleted('scout', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('scout', eventId, true);
@@ -859,14 +859,14 @@ export const EventHandlers = {
       logger.modalShow('discard', eventId);
 
       try {
-        const selectedCardId = await ModalManager.showCardSelection(
+        const selection = await ModalManager.showCardSelection(
           player.hand,
           this.cardData,
           { title: 'Opponent stole from you! Choose a card to discard' }
         );
 
         // Complete the forced discard (this clears pendingDiscard internally)
-        const result = GameActions.completeDiscard(selectedCardId);
+        const result = GameActions.completeDiscard(selection.cardId);
 
         logger.eventCompleted('discard', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('discard', eventId, true);
@@ -964,14 +964,14 @@ export const EventHandlers = {
       logger.modalShow('sabotage', eventId);
 
       try {
-        const selectedAntId = await ModalManager.showCardSelection(
+        const selection = await ModalManager.showCardSelection(
           allAnts,
           this.cardData,
           { title: 'Sabotaged! Choose an ant to remove from your construction' }
         );
 
         // Complete the sabotage (this clears pendingSabotage internally)
-        const result = GameActions.completeSabotage(selectedAntId);
+        const result = GameActions.completeSabotage(selection.cardId);
 
         logger.eventCompleted('sabotage', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('sabotage', eventId, true);
@@ -1070,14 +1070,17 @@ export const EventHandlers = {
       logger.modalShow('trash', eventId);
 
       try {
-        const selectedCardId = await ModalManager.showCardSelection(
+        const selection = await ModalManager.showCardSelection(
           availableCards,
           this.cardData,
           { title: 'Choose a card to trash (permanently remove from your deck)', discardStartIndex }
         );
 
+        // Determine if selected card was from hand or discard based on index
+        const location = selection.index >= discardStartIndex ? 'discard' : 'hand';
+
         // Complete the trash (this clears pendingTrash internally)
-        const result = GameActions.completeTrash(selectedCardId);
+        const result = GameActions.completeTrash(selection.cardId, location);
 
         logger.eventCompleted('trash', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('trash', eventId, true);

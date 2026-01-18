@@ -41,7 +41,7 @@ export const ModalManager = {
         // Handle card selection
         cardDiv.addEventListener('click', () => {
           this.hideCardSelection();
-          resolve(cardId);
+          resolve({ cardId, index });
         });
 
         cardsContainer.appendChild(cardDiv);

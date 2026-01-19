@@ -203,6 +203,42 @@
       "abilities": ["return"],
       "type": "support",
       "description": "High defense. Returns to your discard pile after completing a construction instead of being scrapped."
+    },
+    {
+      "id": "master_scrap",
+      "name": "Master Scrap",
+      "cost": 1,
+      "resources": 1,
+      "attack": 1,
+      "defense": 1,
+      "vp": 0,
+      "abilities": ["trash2"],
+      "type": "support",
+      "description": "Scraps 2 cards."
+    },
+    {
+      "id": "master_explore",
+      "name": "Master explore",
+      "cost": 1,
+      "resources": 1,
+      "attack": 1,
+      "defense": 1,
+      "vp": 0,
+      "abilities": ["scout2"],
+      "type": "support",
+      "description": "explores 2 cards."
+    },
+    {
+      "id": "master_sabotage",
+      "name": "Master sabotage",
+      "cost": 1,
+      "resources": 1,
+      "attack": 1,
+      "defense": 1,
+      "vp": 0,
+      "abilities": ["steal2"],
+      "type": "support",
+      "description": "explores 2 cards."
     }
   ]
 }

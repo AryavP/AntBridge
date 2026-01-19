@@ -44,6 +44,119 @@ export const GameActions = {
     if (!card.abilities) return;
 
     card.abilities.forEach(ability => {
+      // Check for multi-card abilities (trash, scout, sabotage, steal with optional count)
+      const multiCardMatch = ability.match(/^(trash|scout|sabotage|steal)(\d+)?$/);
+      if (multiCardMatch) {
+        const abilityType = multiCardMatch[1];
+        const count = multiCardMatch[2] ? parseInt(multiCardMatch[2]) : 1;
+
+        switch (abilityType) {
+          case 'scout':
+            // Look at top 3 cards - store them for interactive selection
+            // If deck doesn't have enough cards, shuffle discard into deck first
+            if (player.deck.length < 3 && player.discard.length > 0) {
+              // Shuffle discard pile into deck
+              player.deck.push(...player.discard);
+              player.discard = [];
+
+              // Shuffle the deck
+              for (let i = player.deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [player.deck[i], player.deck[j]] = [player.deck[j], player.deck[i]];
+              }
+            }
+
+            const topCards = player.deck.splice(-3);
+            if (topCards.length > 0) {
+              // Store scout state for UI to handle
+              const scoutEventId = `scout_${Date.now()}_${Math.random()}`;
+              GameState.pendingScout = {
+                playerId: playerId,
+                cards: topCards,
+                count: count,  // How many cards user can select
+                eventId: scoutEventId
+              };
+              logger.eventInitiated('scout', {
+                playerId: playerId,
+                eventId: scoutEventId,
+                cardCount: topCards.length,
+                selectCount: count
+              });
+            }
+            break;
+
+          case 'sabotage':
+            // Find opponents with ants in construction zones
+            const opponents = Object.keys(GameState.players).filter(pid => {
+              if (pid === playerId) return false; // Skip current player
+              const opponent = GameState.players[pid];
+              const hasAnts = Object.values(opponent.constructionZone || {}).some(ants => ants && ants.length > 0);
+              return hasAnts;
+            });
+
+            // Sabotage the first opponent with construction (in 2-player, this is the only opponent)
+            if (opponents.length > 0) {
+              const sabotageEventId = `sabotage_${Date.now()}_${Math.random()}`;
+              GameState.pendingSabotage = {
+                playerId: opponents[0],
+                saboteur: playerId,
+                count: count,  // How many ants must be removed
+                eventId: sabotageEventId
+              };
+              logger.eventInitiated('sabotage', {
+                playerId: opponents[0],
+                saboteur: playerId,
+                eventId: sabotageEventId,
+                removeCount: count
+              });
+            }
+            break;
+
+          case 'trash':
+            // Allow player to trash cards from hand or discard pile
+            const trashEventId = `trash_${Date.now()}_${Math.random()}`;
+            GameState.pendingTrash = {
+              playerId: playerId,
+              count: count,  // How many cards to trash
+              eventId: trashEventId
+            };
+            logger.eventInitiated('trash', {
+              playerId: playerId,
+              eventId: trashEventId,
+              trashCount: count
+            });
+            break;
+
+          case 'steal':
+            // Force opponent to discard card(s)
+            const stealOpponentIds = Object.keys(GameState.players).filter(pid => pid !== playerId);
+            if (stealOpponentIds.length > 0) {
+              const stealOpponentId = stealOpponentIds[0]; // In 2-player, just the one opponent
+              const stealOpponent = GameState.players[stealOpponentId];
+              if (stealOpponent.hand.length > 0) {
+                const discardEventId = `discard_${Date.now()}_${Math.random()}`;
+                GameState.pendingDiscard = {
+                  playerId: stealOpponentId,
+                  reason: 'stolen',
+                  attackerId: playerId,
+                  count: count,  // How many cards opponent must discard
+                  eventId: discardEventId
+                };
+                logger.eventInitiated('steal/discard', {
+                  playerId: stealOpponentId,
+                  attackerId: playerId,
+                  eventId: discardEventId,
+                  opponentHandSize: stealOpponent.hand.length,
+                  discardCount: count
+                });
+              }
+            }
+            break;
+        }
+        return;  // Skip the rest of the switch since we handled this ability
+      }
+
+      // Handle other abilities that don't support multi-card pattern
       switch (ability) {
         case 'draw':
           GameRules.drawCards(playerId, 1);
@@ -60,100 +173,6 @@ export const GameActions = {
           if (player.discard.length > 0) {
             const antId = player.discard.pop();
             player.hand.push(antId);
-          }
-          break;
-
-        case 'scout':
-          // Look at top 3 cards - store them for interactive selection
-          // If deck doesn't have enough cards, shuffle discard into deck first
-          if (player.deck.length < 3 && player.discard.length > 0) {
-            // Shuffle discard pile into deck
-            player.deck.push(...player.discard);
-            player.discard = [];
-
-            // Shuffle the deck
-            for (let i = player.deck.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [player.deck[i], player.deck[j]] = [player.deck[j], player.deck[i]];
-            }
-          }
-
-          const topCards = player.deck.splice(-3);
-          if (topCards.length > 0) {
-            // Store scout state for UI to handle
-            const eventId = `scout_${Date.now()}_${Math.random()}`;
-            GameState.pendingScout = {
-              playerId: playerId,
-              cards: topCards,
-              eventId: eventId
-            };
-            logger.eventInitiated('scout', {
-              playerId: playerId,
-              eventId: eventId,
-              cardCount: topCards.length
-            });
-          }
-          break;
-
-        case 'sabotage':
-          // Find opponents with ants in construction zones
-          const opponents = Object.keys(GameState.players).filter(pid => {
-            if (pid === playerId) return false; // Skip current player
-            const opponent = GameState.players[pid];
-            const hasAnts = Object.values(opponent.constructionZone || {}).some(ants => ants && ants.length > 0);
-            return hasAnts;
-          });
-
-          // Sabotage the first opponent with construction (in 2-player, this is the only opponent)
-          if (opponents.length > 0) {
-            const eventId = `sabotage_${Date.now()}_${Math.random()}`;
-            GameState.pendingSabotage = {
-              playerId: opponents[0],
-              saboteur: playerId,
-              eventId: eventId
-            };
-            logger.eventInitiated('sabotage', {
-              playerId: opponents[0],
-              saboteur: playerId,
-              eventId: eventId
-            });
-          }
-          break;
-
-        case 'trash':
-          // Allow player to trash a card from hand or discard pile
-          const trashEventId = `trash_${Date.now()}_${Math.random()}`;
-          GameState.pendingTrash = {
-            playerId: playerId,
-            eventId: trashEventId
-          };
-          logger.eventInitiated('trash', {
-            playerId: playerId,
-            eventId: trashEventId
-          });
-          break;
-
-        case 'steal':
-          // Force opponent to discard a card
-          const opponentIds = Object.keys(GameState.players).filter(pid => pid !== playerId);
-          if (opponentIds.length > 0) {
-            const opponentId = opponentIds[0]; // In 2-player, just the one opponent
-            const opponent = GameState.players[opponentId];
-            if (opponent.hand.length > 0) {
-              const discardEventId = `discard_${Date.now()}_${Math.random()}`;
-              GameState.pendingDiscard = {
-                playerId: opponentId,
-                reason: 'stolen',
-                attackerId: playerId,
-                eventId: discardEventId
-              };
-              logger.eventInitiated('steal/discard', {
-                playerId: opponentId,
-                attackerId: playerId,
-                eventId: discardEventId,
-                opponentHandSize: opponent.hand.length
-              });
-            }
           }
           break;
 
@@ -524,7 +543,8 @@ export const GameActions = {
   },
 
   // Complete scout action with player's card selection
-  completeScout(selectedCardId) {
+  // selectedCardIds can be a single cardId (backward compatible) or array of cardIds
+  completeScout(selectedCardIds) {
     if (!GameState.pendingScout) {
       return { success: false, error: "No pending scout action" };
     }
@@ -532,25 +552,32 @@ export const GameActions = {
     const { playerId, cards } = GameState.pendingScout;
     const player = GameState.players[playerId];
 
-    if (!cards.includes(selectedCardId)) {
-      return { success: false, error: "Invalid card selection" };
+    // Normalize to array for backward compatibility
+    const cardIdsArray = Array.isArray(selectedCardIds) ? selectedCardIds : [selectedCardIds];
+
+    // Validate all selected cards are in the scouted cards
+    for (const cardId of cardIdsArray) {
+      if (!cards.includes(cardId)) {
+        return { success: false, error: "Invalid card selection" };
+      }
     }
 
-    // Add selected card to hand
-    player.hand.push(selectedCardId);
+    // Add all selected cards to hand
+    player.hand.push(...cardIdsArray);
 
     // Put remaining cards on bottom of deck
-    const remainingCards = cards.filter(c => c !== selectedCardId);
+    const remainingCards = cards.filter(c => !cardIdsArray.includes(c));
     player.deck.unshift(...remainingCards);
 
     // Clear pending scout
     GameState.pendingScout = null;
 
-    return { success: true };
+    return { success: true, selectedCount: cardIdsArray.length };
   },
 
   // Complete forced discard with player's card selection
-  completeDiscard(selectedCardId) {
+  // selectedCardIds can be a single cardId (backward compatible) or array of cardIds
+  completeDiscard(selectedCardIds) {
     if (!GameState.pendingDiscard) {
       return { success: false, error: "No pending discard" };
     }
@@ -558,23 +585,34 @@ export const GameActions = {
     const { playerId } = GameState.pendingDiscard;
     const player = GameState.players[playerId];
 
-    if (!player.hand.includes(selectedCardId)) {
-      return { success: false, error: "Invalid card selection" };
+    // Normalize to array for backward compatibility
+    const cardIdsArray = Array.isArray(selectedCardIds) ? selectedCardIds : [selectedCardIds];
+
+    // Validate all selected cards are in hand
+    for (const cardId of cardIdsArray) {
+      if (!player.hand.includes(cardId)) {
+        return { success: false, error: "Invalid card selection" };
+      }
     }
 
-    // Remove card from hand and put in discard
-    const cardIndex = player.hand.indexOf(selectedCardId);
-    player.hand.splice(cardIndex, 1);
-    player.discard.push(selectedCardId);
+    // Remove all selected cards from hand and put in discard
+    for (const cardId of cardIdsArray) {
+      const cardIndex = player.hand.indexOf(cardId);
+      if (cardIndex !== -1) {
+        player.hand.splice(cardIndex, 1);
+        player.discard.push(cardId);
+      }
+    }
 
     // Clear pending discard
     GameState.pendingDiscard = null;
 
-    return { success: true };
+    return { success: true, discardedCount: cardIdsArray.length };
   },
 
   // Complete sabotage with player's ant selection
-  completeSabotage(selectedAntId) {
+  // selectedAntIds can be a single antId (backward compatible) or array of antIds
+  completeSabotage(selectedAntIds) {
     if (!GameState.pendingSabotage) {
       return { success: false, error: "No pending sabotage" };
     }
@@ -582,43 +620,50 @@ export const GameActions = {
     const { playerId } = GameState.pendingSabotage;
     const player = GameState.players[playerId];
 
-    // Find which objective has this ant
-    let foundObjective = null;
-    let antIndex = -1;
+    // Normalize to array for backward compatibility
+    const antIdsArray = Array.isArray(selectedAntIds) ? selectedAntIds : [selectedAntIds];
 
-    Object.keys(player.constructionZone).forEach(objectiveId => {
-      const ants = player.constructionZone[objectiveId];
-      const index = ants.indexOf(selectedAntId);
-      if (index !== -1) {
-        foundObjective = objectiveId;
-        antIndex = index;
+    // Process each ant removal
+    for (const selectedAntId of antIdsArray) {
+      // Find which objective has this ant
+      let foundObjective = null;
+      let antIndex = -1;
+
+      Object.keys(player.constructionZone).forEach(objectiveId => {
+        const ants = player.constructionZone[objectiveId];
+        const index = ants.indexOf(selectedAntId);
+        if (index !== -1) {
+          foundObjective = objectiveId;
+          antIndex = index;
+        }
+      });
+
+      if (foundObjective === null) {
+        return { success: false, error: "Invalid ant selection" };
       }
-    });
 
-    if (foundObjective === null) {
-      return { success: false, error: "Invalid ant selection" };
+      // Remove ant from construction zone
+      player.constructionZone[foundObjective].splice(antIndex, 1);
+
+      // If no ants left on this objective, remove the objective entry
+      if (player.constructionZone[foundObjective].length === 0) {
+        delete player.constructionZone[foundObjective];
+      }
+
+      // Ant goes to discard pile
+      player.discard.push(selectedAntId);
     }
-
-    // Remove ant from construction zone
-    player.constructionZone[foundObjective].splice(antIndex, 1);
-
-    // If no ants left on this objective, remove the objective entry
-    if (player.constructionZone[foundObjective].length === 0) {
-      delete player.constructionZone[foundObjective];
-    }
-
-    // Ant goes to discard pile
-    player.discard.push(selectedAntId);
 
     // Clear pending sabotage
     GameState.pendingSabotage = null;
 
-    return { success: true };
+    return { success: true, removedCount: antIdsArray.length };
   },
 
   // Complete trash with player's card selection
-  // location parameter specifies where to remove the card from ('hand' or 'discard')
-  completeTrash(selectedCardId, location) {
+  // cardIds: single cardId or array of cardIds
+  // locations: single location or array of locations ('hand' or 'discard')
+  completeTrash(cardIds, locations) {
     if (!GameState.pendingTrash) {
       return { success: false, error: "No pending trash" };
     }
@@ -626,24 +671,36 @@ export const GameActions = {
     const { playerId } = GameState.pendingTrash;
     const player = GameState.players[playerId];
 
-    // Remove from the specified location
-    if (location === 'hand') {
-      const handIndex = player.hand.indexOf(selectedCardId);
-      if (handIndex !== -1) {
-        player.hand.splice(handIndex, 1);
-        GameState.pendingTrash = null;
-        return { success: true, location: 'hand' };
-      }
-    } else if (location === 'discard') {
-      const discardIndex = player.discard.indexOf(selectedCardId);
-      if (discardIndex !== -1) {
-        player.discard.splice(discardIndex, 1);
-        GameState.pendingTrash = null;
-        return { success: true, location: 'discard' };
+    // Normalize to arrays for backward compatibility
+    const cardIdsArray = Array.isArray(cardIds) ? cardIds : [cardIds];
+    const locationsArray = Array.isArray(locations) ? locations : [locations];
+
+    let trashedCount = 0;
+
+    // Process each card removal
+    for (let i = 0; i < cardIdsArray.length; i++) {
+      const cardId = cardIdsArray[i];
+      const location = locationsArray[i];
+
+      if (location === 'hand') {
+        const handIndex = player.hand.indexOf(cardId);
+        if (handIndex !== -1) {
+          player.hand.splice(handIndex, 1);
+          trashedCount++;
+        }
+      } else if (location === 'discard') {
+        const discardIndex = player.discard.indexOf(cardId);
+        if (discardIndex !== -1) {
+          player.discard.splice(discardIndex, 1);
+          trashedCount++;
+        }
       }
     }
 
-    return { success: false, error: "Card not found in specified location" };
+    // Clear pending trash
+    GameState.pendingTrash = null;
+
+    return { success: true, trashedCount };
   },
 
   // End current player's turn

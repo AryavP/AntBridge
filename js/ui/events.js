@@ -752,30 +752,42 @@ export const EventHandlers = {
       }
 
       this.isProcessingScout = true;
+      const { count = 1 } = GameState.pendingScout;
       logger.eventProcessing('scout', {
         eventId: eventId,
         playerId: this.currentPlayerId,
         currentPlayer: GameState.currentPlayer,
-        cardCount: GameState.pendingScout.cards.length
+        cardCount: GameState.pendingScout.cards.length,
+        selectCount: count
       });
 
       logger.modalShow('scout', eventId);
+
+      // Build title based on count
+      const scoutTitle = count > 1
+        ? `Scout: Choose up to ${count} cards to add to your hand`
+        : 'Scout: Choose a card to add to your hand';
 
       try {
         const selection = await ModalManager.showCardSelection(
           GameState.pendingScout.cards,
           this.cardData,
-          { title: 'Scout: Choose a card to add to your hand' }
+          {
+            title: scoutTitle,
+            maxSelections: Math.min(count, GameState.pendingScout.cards.length),
+            minSelections: 1
+          }
         );
 
         // Complete the scout action (this clears pendingScout internally)
-        const result = GameActions.completeScout(selection.cardId);
+        const result = GameActions.completeScout(selection.cardIds);
 
         logger.eventCompleted('scout', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('scout', eventId, true);
 
         if (result.success) {
-          UIRender.showMessage('Card added to hand', 'success');
+          const cardText = selection.cardIds.length === 1 ? 'Card' : `${selection.cardIds.length} cards`;
+          UIRender.showMessage(`${cardText} added to hand`, 'success');
         } else {
           // If completion failed, still clear the pending state
           GameState.pendingScout = null;
@@ -841,12 +853,14 @@ export const EventHandlers = {
 
       this.isProcessingDiscard = true;
       const player = GameState.players[this.currentPlayerId];
+      const { count = 1 } = GameState.pendingDiscard;
 
       logger.eventProcessing('discard', {
         eventId: eventId,
         playerId: this.currentPlayerId,
         currentPlayer: GameState.currentPlayer,
-        handSize: player.hand.length
+        handSize: player.hand.length,
+        discardCount: count
       });
 
       if (player.hand.length === 0) {
@@ -858,32 +872,46 @@ export const EventHandlers = {
 
       logger.modalShow('discard', eventId);
 
+      // Adjust selections based on available cards in hand
+      const actualMin = Math.min(count, player.hand.length);
+      const discardTitle = actualMin > 1
+        ? `Opponent stole from you! Discard ${actualMin} card(s)`
+        : 'Opponent stole from you! Choose a card to discard';
+
       try {
         const selection = await ModalManager.showCardSelection(
           player.hand,
           this.cardData,
-          { title: 'Opponent stole from you! Choose a card to discard' }
+          {
+            title: discardTitle,
+            maxSelections: count,
+            minSelections: actualMin,
+            forceComplete: true  // User cannot escape forced discard
+          }
         );
 
         // Complete the forced discard (this clears pendingDiscard internally)
-        const result = GameActions.completeDiscard(selection.cardId);
+        const result = GameActions.completeDiscard(selection.cardIds);
 
         logger.eventCompleted('discard', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('discard', eventId, true);
 
         if (result.success) {
-          UIRender.showMessage('Card discarded', 'info');
+          const cardText = selection.cardIds.length === 1 ? 'Card' : `${selection.cardIds.length} cards`;
+          UIRender.showMessage(`${cardText} discarded`, 'info');
         } else {
           // If completion failed, still clear the pending state
           GameState.pendingDiscard = null;
           UIRender.showMessage(result.error || 'Discard failed', 'error');
         }
       } catch (error) {
+        // This shouldn't happen with forceComplete, but handle it anyway
         logger.error(LogCategory.EVENT, 'Discard selection error', { error: error.message, eventId });
         logger.modalClose('discard', eventId, false);
-        // User cancelled - auto-discard first card
+        // Auto-discard first N cards
         if (GameState.pendingDiscard && player.hand.length > 0) {
-          GameActions.completeDiscard(player.hand[0]);
+          const cardsToDiscard = player.hand.slice(0, actualMin);
+          GameActions.completeDiscard(cardsToDiscard);
         } else {
           // No cards to discard, just clear the pending state
           GameState.pendingDiscard = null;
@@ -938,6 +966,7 @@ export const EventHandlers = {
 
       this.isProcessingSabotage = true;
       const player = GameState.players[this.currentPlayerId];
+      const { count = 1 } = GameState.pendingSabotage;
 
       // Collect all ants from all construction zones
       const allAnts = [];
@@ -950,7 +979,8 @@ export const EventHandlers = {
         eventId: eventId,
         playerId: this.currentPlayerId,
         currentPlayer: GameState.currentPlayer,
-        antCount: allAnts.length
+        antCount: allAnts.length,
+        removeCount: count
       });
 
       if (allAnts.length === 0) {
@@ -963,32 +993,46 @@ export const EventHandlers = {
 
       logger.modalShow('sabotage', eventId);
 
+      // Adjust selections based on available ants
+      const actualMin = Math.min(count, allAnts.length);
+      const sabotageTitle = actualMin > 1
+        ? `Sabotaged! Remove ${actualMin} ant(s) from your construction`
+        : 'Sabotaged! Choose an ant to remove from your construction';
+
       try {
         const selection = await ModalManager.showCardSelection(
           allAnts,
           this.cardData,
-          { title: 'Sabotaged! Choose an ant to remove from your construction' }
+          {
+            title: sabotageTitle,
+            maxSelections: count,
+            minSelections: actualMin,
+            forceComplete: true  // User cannot escape sabotage
+          }
         );
 
         // Complete the sabotage (this clears pendingSabotage internally)
-        const result = GameActions.completeSabotage(selection.cardId);
+        const result = GameActions.completeSabotage(selection.cardIds);
 
         logger.eventCompleted('sabotage', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('sabotage', eventId, true);
 
         if (result.success) {
-          UIRender.showMessage('Ant removed from construction', 'info');
+          const antText = selection.cardIds.length === 1 ? 'Ant' : `${selection.cardIds.length} ants`;
+          UIRender.showMessage(`${antText} removed from construction`, 'info');
         } else {
           // If completion failed, still clear the pending state
           GameState.pendingSabotage = null;
           UIRender.showMessage(result.error || 'Sabotage failed', 'error');
         }
       } catch (error) {
+        // This shouldn't happen with forceComplete, but handle it anyway
         logger.error(LogCategory.EVENT, 'Sabotage selection error', { error: error.message, eventId });
         logger.modalClose('sabotage', eventId, false);
-        // User cancelled - auto-remove first ant
+        // Auto-remove first N ants
         if (GameState.pendingSabotage && allAnts.length > 0) {
-          GameActions.completeSabotage(allAnts[0]);
+          const antsToRemove = allAnts.slice(0, actualMin);
+          GameActions.completeSabotage(antsToRemove);
         } else {
           // No ants to remove, just clear the pending state
           GameState.pendingSabotage = null;
@@ -1045,6 +1089,7 @@ export const EventHandlers = {
 
       this.isProcessingTrash = true;
       const player = GameState.players[this.currentPlayerId];
+      const { count = 1 } = GameState.pendingTrash;
 
       // Collect cards from hand and discard pile
       const availableCards = [...player.hand, ...player.discard];
@@ -1056,7 +1101,8 @@ export const EventHandlers = {
         eventId: eventId,
         playerId: this.currentPlayerId,
         currentPlayer: GameState.currentPlayer,
-        availableCardCount: availableCards.length
+        availableCardCount: availableCards.length,
+        trashCount: count
       });
 
       if (availableCards.length === 0) {
@@ -1069,24 +1115,32 @@ export const EventHandlers = {
 
       logger.modalShow('trash', eventId);
 
+      // Build title based on count
+      const trashTitle = count > 1
+        ? `Trash up to ${count} cards (permanently remove from your deck)`
+        : 'Choose a card to trash (permanently remove from your deck)';
+
       try {
         const selection = await ModalManager.showCardSelection(
           availableCards,
           this.cardData,
-          { title: 'Choose a card to trash (permanently remove from your deck)', discardStartIndex }
+          {
+            title: trashTitle,
+            maxSelections: Math.min(count, availableCards.length),
+            minSelections: 1,  // Can choose fewer than max
+            discardStartIndex
+          }
         );
 
-        // Determine if selected card was from hand or discard based on index
-        const location = selection.index >= discardStartIndex ? 'discard' : 'hand';
-
-        // Complete the trash (this clears pendingTrash internally)
-        const result = GameActions.completeTrash(selection.cardId, location);
+        // Complete the trash with arrays (this clears pendingTrash internally)
+        const result = GameActions.completeTrash(selection.cardIds, selection.locations);
 
         logger.eventCompleted('trash', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('trash', eventId, true);
 
         if (result.success) {
-          UIRender.showMessage(`Card trashed from ${result.location}`, 'success');
+          const cardText = result.trashedCount === 1 ? 'Card' : `${result.trashedCount} cards`;
+          UIRender.showMessage(`${cardText} trashed`, 'success');
         } else {
           // If completion failed, still clear the pending state to prevent loops
           GameState.pendingTrash = null;

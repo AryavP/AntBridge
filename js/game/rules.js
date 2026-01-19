@@ -58,23 +58,28 @@ export const GameRules = {
     GameState.startedAt = Date.now();
   },
 
-  // Create pool of cards for market (multiple copies of each card)
+  // Create pool of cards for market (copies defined per card in cards.json)
   createMarketPool(cardData) {
     const pool = [];
     cardData.ants.forEach(card => {
-      // Skip 0 cost cards - they don't appear in trade row
+      // Skip starter cards (cost 0) - they don't appear in trade row
       if (card.cost === 0) return;
 
-      // Determine quantity based on cost
-      let quantity = 5; // default
-      if (card.cost <= 2) quantity = 8;
-      if (card.cost >= 6) quantity = 3;
+      // Use copies field from card data, default to 0 if not specified
+      const quantity = card.copies || 0;
 
       for (let i = 0; i < quantity; i++) {
         pool.push(card.id);
       }
     });
     return pool;
+  },
+
+  // Reshuffle cards back into the market deck (batch operation)
+  reshuffleToMarket(cardIds) {
+    if (cardIds.length === 0) return;
+    GameState.marketDeck.push(...cardIds);
+    GameState.marketDeck = GameState.shuffle(GameState.marketDeck);
   },
 
   // Fill trade row with cards from market deck

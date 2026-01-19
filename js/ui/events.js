@@ -1133,7 +1133,7 @@ export const EventHandlers = {
         );
 
         // Complete the trash with arrays (this clears pendingTrash internally)
-        const result = GameActions.completeTrash(selection.cardIds, selection.locations);
+        const result = GameActions.completeTrash(selection.cardIds, selection.locations, this.cardData);
 
         logger.eventCompleted('trash', { eventId, playerId: this.currentPlayerId }, result);
         logger.modalClose('trash', eventId, true);

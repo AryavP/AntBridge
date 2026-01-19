@@ -255,14 +255,25 @@ export const GameActions = {
 
     // Process ants used in construction
     const antsUsed = player.constructionZone[objectiveId] || [];
+    const cardsToReshuffle = [];
+
     antsUsed.forEach(antId => {
       const card = GameState.getCardById(antId, cardData);
       if (card && card.abilities && card.abilities.includes('return')) {
         // Ants with "return" ability go to discard pile instead of being scrapped
         player.discard.push(antId);
+      } else if (card && card.cost === 0) {
+        // Starter cards are permanently scrapped
+      } else {
+        // Non-starter cards go back to market deck
+        cardsToReshuffle.push(antId);
       }
-      // Otherwise, the ant is scrapped (permanently removed from game)
     });
+
+    // Batch reshuffle non-starter cards back to market
+    if (cardsToReshuffle.length > 0) {
+      GameRules.reshuffleToMarket(cardsToReshuffle);
+    }
 
     // Remove the construction zone entry
     delete player.constructionZone[objectiveId];
@@ -663,7 +674,8 @@ export const GameActions = {
   // Complete trash with player's card selection
   // cardIds: single cardId or array of cardIds
   // locations: single location or array of locations ('hand' or 'discard')
-  completeTrash(cardIds, locations) {
+  // cardData: card definitions to check cost for reshuffling
+  completeTrash(cardIds, locations, cardData) {
     if (!GameState.pendingTrash) {
       return { success: false, error: "No pending trash" };
     }
@@ -676,25 +688,40 @@ export const GameActions = {
     const locationsArray = Array.isArray(locations) ? locations : [locations];
 
     let trashedCount = 0;
+    const cardsToReshuffle = [];
 
     // Process each card removal
     for (let i = 0; i < cardIdsArray.length; i++) {
       const cardId = cardIdsArray[i];
       const location = locationsArray[i];
+      const card = cardData ? GameState.getCardById(cardId, cardData) : null;
 
       if (location === 'hand') {
         const handIndex = player.hand.indexOf(cardId);
         if (handIndex !== -1) {
           player.hand.splice(handIndex, 1);
           trashedCount++;
+          // Non-starter cards go back to market
+          if (card && card.cost > 0) {
+            cardsToReshuffle.push(cardId);
+          }
         }
       } else if (location === 'discard') {
         const discardIndex = player.discard.indexOf(cardId);
         if (discardIndex !== -1) {
           player.discard.splice(discardIndex, 1);
           trashedCount++;
+          // Non-starter cards go back to market
+          if (card && card.cost > 0) {
+            cardsToReshuffle.push(cardId);
+          }
         }
       }
+    }
+
+    // Batch reshuffle non-starter cards back to market
+    if (cardsToReshuffle.length > 0) {
+      GameRules.reshuffleToMarket(cardsToReshuffle);
     }
 
     // Clear pending trash

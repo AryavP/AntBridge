@@ -10,7 +10,7 @@
       "vp": 0,
       "abilities": [],
       "type": "worker",
-      "description": ""
+      "description": "Just punching the clock."
     },
     {
       "id": "soldier_ant",
@@ -22,7 +22,7 @@
       "vp": 0,
       "abilities": [],
       "type": "soldier",
-      "description": ""
+      "description": "Marches in, ready for action."
     },
     {
       "id": "regular_ant",
@@ -35,7 +35,7 @@
       "abilities": [],
       "type": "worker",
       "copies": 9,
-      "description": ""
+      "description": "Nothing special, just good honest work."
     },
     {
       "id": "antthropologist",
@@ -48,7 +48,7 @@
       "abilities": [],
       "type": "worker",
       "copies": 7,
-      "description": ""
+      "description": "Studies ancient crumbs and forgotten trails."
     },
     {
       "id": "inventor_ant",
@@ -61,7 +61,7 @@
       "abilities": [],
       "type": "soldier",
       "copies": 6,
-      "description": ""
+      "description": "Always tinkering with something."
     },
     {
       "id": "antphrodesiac",
@@ -74,7 +74,7 @@
       "abilities": ["draw"],
       "type": "scout",
       "copies": 6,
-      "description": ""
+      "description": "So charming, you draw a card."
     },
     {
       "id": "ant_with_a_sugar_cube",
@@ -87,7 +87,7 @@
       "abilities": [],
       "type": "worker",
       "copies": 4,
-      "description": ""
+      "description": "Heavy lifting, sweet rewards."
     },
     {
       "id": "necromantcer",
@@ -100,7 +100,7 @@
       "abilities": ["scout"],
       "type": "scout",
       "copies": 4,
-      "description": ""
+      "description": "Peers into the deck's dark future. Scout the top 3."
     },
     {
       "id": "thicc_ant",
@@ -113,7 +113,7 @@
       "abilities": [],
       "type": "support",
       "copies": 4,
-      "description": ""
+      "description": "Absolute unit. Takes hits like a champ."
     },
     {
       "id": "cordyceps",
@@ -126,7 +126,7 @@
       "abilities": ["steal"],
       "type": "soldier",
       "copies": 4,
-      "description": ""
+      "description": "Mind control in fungal form. Opponent discards 1."
     },
     {
       "id": "kamikazee_ant",
@@ -139,7 +139,7 @@
       "abilities": [],
       "type": "soldier",
       "copies": 5,
-      "description": ""
+      "description": "Goes out with a bang."
     },
     {
       "id": "decoy_ant",
@@ -152,7 +152,7 @@
       "abilities": ["trash"],
       "type": "support",
       "copies": 5,
-      "description": ""
+      "description": "Draws fire while you clean house. Trash a card."
     },
     {
       "id": "rainy_day_ant",
@@ -165,7 +165,7 @@
       "abilities": [],
       "type": "worker",
       "copies": 4,
-      "description": ""
+      "description": "Always prepared for the worst."
     },
     {
       "id": "picnic_basket",
@@ -178,7 +178,7 @@
       "abilities": ["draw"],
       "type": "scout",
       "copies": 4,
-      "description": ""
+      "description": "A feast worth fighting for. Draw a card."
     },
     {
       "id": "duct_tape",
@@ -191,7 +191,7 @@
       "abilities": ["return"],
       "type": "support",
       "copies": 5,
-      "description": ""
+      "description": "Fixes everything. Returns after combat."
     },
     {
       "id": "finger",
@@ -204,7 +204,7 @@
       "abilities": ["draw"],
       "type": "scout",
       "copies": 5,
-      "description": ""
+      "description": "The ultimate threat from above. Draw a card."
     },
     {
       "id": "t-ant-t",
@@ -217,7 +217,7 @@
       "abilities": [],
       "type": "soldier",
       "copies": 5,
-      "description": ""
+      "description": "Explosively powerful."
     },
     {
       "id": "motivational_speaker_ant",
@@ -230,7 +230,7 @@
       "abilities": ["scout"],
       "type": "scout",
       "copies": 3,
-      "description": ""
+      "description": "You can do it! Scout the top 3."
     },
     {
       "id": "shinobi_ant",
@@ -243,7 +243,7 @@
       "abilities": ["steal"],
       "type": "soldier",
       "copies": 3,
-      "description": ""
+      "description": "Silent and deadly. Opponent discards 1."
     },
     {
       "id": "ant_eater",
@@ -256,7 +256,7 @@
       "abilities": ["trash"],
       "type": "support",
       "copies": 4,
-      "description": ""
+      "description": "Wait, whose side is this guy on? Trash a card."
     },
     {
       "id": "long_skinny_ant",
@@ -269,7 +269,7 @@
       "abilities": ["return"],
       "type": "special",
       "copies": 2,
-      "description": ""
+      "description": "Survives the weirdest situations. Returns after combat."
     },
     {
       "id": "five_star_general_ant",
@@ -282,7 +282,7 @@
       "abilities": ["draw"],
       "type": "special",
       "copies": 2,
-      "description": ""
+      "description": "Commands respect and reinforcements. Draw a card."
     },
     {
       "id": "ant_with_a_gun",
@@ -295,7 +295,7 @@
       "abilities": ["steal"],
       "type": "special",
       "copies": 2,
-      "description": ""
+      "description": "Don't ask where they got it. Opponent discards 1."
     },
     {
       "id": "raid_bug_spray",
@@ -308,7 +308,7 @@
       "abilities": ["trash"],
       "type": "special",
       "copies": 2,
-      "description": ""
+      "description": "The nuclear option. Trash a card."
     },
     {
       "id": "bugs_aldrin",
@@ -321,7 +321,7 @@
       "abilities": ["return"],
       "type": "special",
       "copies": 1,
-      "description": ""
+      "description": "One small step for ant-kind. Returns after combat."
     },
     {
       "id": "manhattant_project",
@@ -334,7 +334,7 @@
       "abilities": ["scout2"],
       "type": "special",
       "copies": 1,
-      "description": ""
+      "description": "Top secret operations. Scout the top 3, twice."
     },
     {
       "id": "mean_queen",
@@ -347,7 +347,7 @@
       "abilities": ["steal2"],
       "type": "special",
       "copies": 1,
-      "description": ""
+      "description": "Rules with an iron mandible. Opponents discard 2."
     },
     {
       "id": "oppenhivemer",
@@ -360,7 +360,7 @@
       "abilities": ["trash2"],
       "type": "special",
       "copies": 1,
-      "description": ""
+      "description": "I am become ant. Trash 2 cards."
     }
   ]
 }

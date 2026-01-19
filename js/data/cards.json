@@ -191,7 +191,7 @@
       "abilities": ["return"],
       "type": "support",
       "copies": 5,
-      "description": "Fixes everything. Returns after combat."
+      "description": "Fixes everything. returns after construction."
     },
     {
       "id": "finger",
@@ -269,7 +269,7 @@
       "abilities": ["return"],
       "type": "special",
       "copies": 2,
-      "description": "Survives the weirdest situations. Returns after combat."
+      "description": "Survives the weirdest situations. returns after construction."
     },
     {
       "id": "five_star_general_ant",
@@ -321,7 +321,7 @@
       "abilities": ["return"],
       "type": "special",
       "copies": 1,
-      "description": "One small step for ant-kind. Returns after combat."
+      "description": "One small step for ant-kind. returns after construction."
     },
     {
       "id": "manhattant_project",

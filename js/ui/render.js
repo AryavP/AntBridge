@@ -248,7 +248,7 @@ export const UIRender = {
     cardDiv.innerHTML = `
       <div class="card-header">
         <span class="card-name">${card.name}</span>
-        ${card.cost > 0 ? `<span class="card-cost">💰 ${card.cost}</span>` : '<span class="card-cost"></span>'}
+        ${card.cost > 0 ? `<span class="card-cost">💎 ${card.cost}</span>` : '<span class="card-cost"></span>'}
       </div>
       <div class="card-stats">
         <span class="attack">⚔️ ${card.attack}</span>

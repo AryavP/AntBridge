@@ -70,6 +70,7 @@ export const GameState = {
     this.pendingDiscard = stateData.pendingDiscard || null;
     this.pendingSabotage = stateData.pendingSabotage || null;
     this.pendingTrash = stateData.pendingTrash || null;
+    this.pendingClear = stateData.pendingClear || null;
 
     // Helper to convert Firebase object to array
     const toArray = (obj) => {
@@ -282,6 +283,7 @@ export const GameState = {
       pendingDiscard: this.pendingDiscard || null,
       pendingSabotage: this.pendingSabotage || null,
       pendingTrash: this.pendingTrash || null,
+      pendingClear: this.pendingClear || null,
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

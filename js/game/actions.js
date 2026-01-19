@@ -44,8 +44,8 @@ export const GameActions = {
     if (!card.abilities) return;
 
     card.abilities.forEach(ability => {
-      // Check for multi-card abilities (trash, scout, sabotage, steal with optional count)
-      const multiCardMatch = ability.match(/^(trash|scout|sabotage|steal)(\d+)?$/);
+      // Check for multi-card abilities (trash, scout, sabotage, steal, clear with optional count)
+      const multiCardMatch = ability.match(/^(trash|scout|sabotage|steal|clear)(\d+)?$/);
       if (multiCardMatch) {
         const abilityType = multiCardMatch[1];
         const count = multiCardMatch[2] ? parseInt(multiCardMatch[2]) : 1;
@@ -150,6 +150,24 @@ export const GameActions = {
                   discardCount: count
                 });
               }
+            }
+            break;
+
+          case 'clear':
+            // Allow player to remove cards from trade row
+            if (GameState.tradeRow.length > 0) {
+              const clearEventId = `clear_${Date.now()}_${Math.random()}`;
+              GameState.pendingClear = {
+                playerId: playerId,
+                count: count,  // How many cards can be cleared from trade row
+                eventId: clearEventId
+              };
+              logger.eventInitiated('clear', {
+                playerId: playerId,
+                eventId: clearEventId,
+                tradeRowSize: GameState.tradeRow.length,
+                clearCount: count
+              });
             }
             break;
         }
@@ -728,6 +746,43 @@ export const GameActions = {
     GameState.pendingTrash = null;
 
     return { success: true, trashedCount };
+  },
+
+  // Complete clear action with player's card selection
+  // selectedCardIds: single cardId or array of cardIds from trade row
+  completeClear(selectedCardIds) {
+    if (!GameState.pendingClear) {
+      return { success: false, error: "No pending clear" };
+    }
+
+    // Normalize to array for consistency
+    const cardIdsArray = Array.isArray(selectedCardIds) ? selectedCardIds : [selectedCardIds];
+
+    // Validate all selected cards are in trade row
+    for (const cardId of cardIdsArray) {
+      if (!GameState.tradeRow.includes(cardId)) {
+        return { success: false, error: "Invalid card selection - card not in trade row" };
+      }
+    }
+
+    // Remove cards from trade row
+    for (const cardId of cardIdsArray) {
+      const index = GameState.tradeRow.indexOf(cardId);
+      if (index !== -1) {
+        GameState.tradeRow.splice(index, 1);
+      }
+    }
+
+    // Reshuffle removed cards back to market deck
+    GameRules.reshuffleToMarket(cardIdsArray);
+
+    // Refill trade row
+    GameRules.fillTradeRow();
+
+    // Clear pending clear
+    GameState.pendingClear = null;
+
+    return { success: true, clearedCount: cardIdsArray.length };
   },
 
   // End current player's turn

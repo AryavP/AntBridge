@@ -42,13 +42,13 @@
       "name": "Antthropologist",
       "cost": 2,
       "attack": 0,
-      "defense": 2,
-      "resources": 2,
+      "defense": 1,
+      "resources": 1,
       "vp": 0,
-      "abilities": [],
+      "abilities": ["clear"],
       "type": "worker",
       "copies": 7,
-      "description": "Studies ancient crumbs and forgotten trails."
+      "description": "Studies ancient crumbs and forgotten trails. Can clear a card from the trade row."
     },
     {
       "id": "inventor_ant",
@@ -136,10 +136,10 @@
       "defense": 0,
       "resources": 0,
       "vp": 0,
-      "abilities": [],
+      "abilities": ["clear2"],
       "type": "soldier",
       "copies": 5,
-      "description": "Goes out with a bang."
+      "description": "Goes out with a bang. Can clear 2 cards from the trade row."
     },
     {
       "id": "decoy_ant",
@@ -214,10 +214,10 @@
       "defense": 0,
       "resources": 0,
       "vp": 0,
-      "abilities": [],
+      "abilities": ["clear3"],
       "type": "soldier",
       "copies": 5,
-      "description": "Explosively powerful."
+      "description": "Explosively powerful. Can clear 3 cards from the trade row."
     },
     {
       "id": "motivational_speaker_ant",

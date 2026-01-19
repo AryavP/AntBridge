@@ -148,6 +148,7 @@ export const GameRules = {
     GameState.pendingDiscard = null;
     GameState.pendingSabotage = null;
     GameState.pendingTrash = null;
+    GameState.pendingClear = null;
 
     // Draw new hand
     this.drawCards(playerId, this.HAND_SIZE);

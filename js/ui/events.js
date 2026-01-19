@@ -21,6 +21,7 @@ export const EventHandlers = {
   isProcessingDiscard: false,  // Prevent concurrent discard modals
   isProcessingSabotage: false,  // Prevent concurrent sabotage modals
   isProcessingTrash: false,  // Prevent concurrent trash modals
+  isProcessingClear: false,  // Prevent concurrent clear modals
   processedEvents: new Set(),  // Track event IDs that have been processed
 
   // Initialize event handlers
@@ -1161,6 +1162,113 @@ export const EventHandlers = {
       logger.eventSkipped('trash', 'not for this player or not their turn', {
         eventId: GameState.pendingTrash.eventId,
         targetPlayer: GameState.pendingTrash.playerId,
+        currentPlayer: GameState.currentPlayer,
+        localPlayer: this.currentPlayerId
+      });
+    }
+  },
+
+  // Check and handle pending clear (remove cards from trade row)
+  async checkPendingClear() {
+    // Prevent concurrent clear modals
+    if (this.isProcessingClear) {
+      logger.eventSkipped('clear', 'already processing', GameState.pendingClear);
+      return;
+    }
+
+    logger.debug(LogCategory.EVENT, 'checkPendingClear called', {
+      hasPendingClear: !!GameState.pendingClear,
+      eventId: GameState.pendingClear?.eventId,
+      targetPlayer: GameState.pendingClear?.playerId,
+      currentPlayer: GameState.currentPlayer,
+      localPlayer: this.currentPlayerId
+    });
+
+    // Only show modal if it's this player's pending action AND it's their turn
+    if (GameState.pendingClear &&
+        GameState.pendingClear.playerId === this.currentPlayerId &&
+        GameState.currentPlayer === this.currentPlayerId) {
+
+      // Check if we've already processed this event
+      const eventId = GameState.pendingClear.eventId;
+      if (eventId && this.processedEvents.has(eventId)) {
+        logger.eventSkipped('clear', 'already processed', { eventId });
+        GameState.pendingClear = null;
+        // Don't sync to Firebase - would create infinite loop with other client
+        return;
+      }
+
+      // Mark event as being processed
+      if (eventId) {
+        this.processedEvents.add(eventId);
+      }
+
+      this.isProcessingClear = true;
+      const { count = 1 } = GameState.pendingClear;
+
+      logger.eventProcessing('clear', {
+        eventId: eventId,
+        playerId: this.currentPlayerId,
+        currentPlayer: GameState.currentPlayer,
+        tradeRowSize: GameState.tradeRow.length,
+        clearCount: count
+      });
+
+      if (GameState.tradeRow.length === 0) {
+        logger.eventSkipped('clear', 'trade row empty', { eventId });
+        GameState.pendingClear = null;
+        this.isProcessingClear = false;
+        this.syncAndRender();
+        return;
+      }
+
+      logger.modalShow('clear', eventId);
+
+      // Build title based on count
+      const clearTitle = count > 1
+        ? `Clear: Remove up to ${count} card(s) from the trade row`
+        : 'Clear: Choose a card to remove from the trade row';
+
+      try {
+        const selection = await ModalManager.showCardSelection(
+          GameState.tradeRow,
+          this.cardData,
+          {
+            title: clearTitle,
+            maxSelections: Math.min(count, GameState.tradeRow.length),
+            minSelections: 1
+          }
+        );
+
+        // Complete the clear action (this clears pendingClear internally)
+        const result = GameActions.completeClear(selection.cardIds);
+
+        logger.eventCompleted('clear', { eventId, playerId: this.currentPlayerId }, result);
+        logger.modalClose('clear', eventId, true);
+
+        if (result.success) {
+          const cardText = result.clearedCount === 1 ? 'Card' : `${result.clearedCount} cards`;
+          UIRender.showMessage(`${cardText} cleared from trade row`, 'success');
+        } else {
+          // If completion failed, still clear the pending state to prevent loops
+          GameState.pendingClear = null;
+          UIRender.showMessage(result.error || 'Clear failed', 'error');
+        }
+      } catch (error) {
+        logger.error(LogCategory.EVENT, 'Clear selection error', { error: error.message, eventId });
+        logger.modalClose('clear', eventId, false);
+        // User cancelled - clear pending clear
+        GameState.pendingClear = null;
+      } finally {
+        // Reset flag BEFORE syncing to prevent re-triggering from Firebase listener
+        this.isProcessingClear = false;
+        // Always sync after processing to update Firebase
+        this.syncAndRender();
+      }
+    } else if (GameState.pendingClear) {
+      logger.eventSkipped('clear', 'not for this player or not their turn', {
+        eventId: GameState.pendingClear.eventId,
+        targetPlayer: GameState.pendingClear.playerId,
         currentPlayer: GameState.currentPlayer,
         localPlayer: this.currentPlayerId
       });

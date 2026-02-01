@@ -34,6 +34,11 @@ export const GameActions = {
     // Card goes to play area (will be discarded at end of turn)
     player.discard.push(cardId);
 
+    GameState.addFeedEvent('card_played', playerId, player.name, {
+      cardName: card.name,
+      resources: card.resources || 0
+    });
+
     return { success: true, card };
   },
 
@@ -261,6 +266,11 @@ export const GameActions = {
     // Don't auto-complete - objectives will be scored at the start of the builder's next turn
     // This gives other players a chance to attack the objective
 
+    GameState.addFeedEvent('objective_placed', playerId, player.name, {
+      cardName: card.name,
+      objectiveName: objective.name
+    });
+
     return { success: true };
   },
 
@@ -367,6 +377,11 @@ export const GameActions = {
 
     // Fill construction row with a new objective
     GameRules.fillConstructionRow();
+
+    GameState.addFeedEvent('objective_scored', playerId, player.name, {
+      objectiveName: objective.name,
+      vpGained: objective.vp
+    });
   },
 
   // Buy a card from trade row
@@ -405,6 +420,12 @@ export const GameActions = {
 
     // Refill trade row
     GameRules.fillTradeRow();
+
+    GameState.addFeedEvent('card_bought', playerId, player.name, {
+      cardName: card.name,
+      cost: card.cost,
+      vpGained: card.vp || 0
+    });
 
     return { success: true, card };
   },
@@ -485,6 +506,11 @@ export const GameActions = {
 
     // Note: Special attack abilities (steal, sabotage, etc.) are handled in executeCardAbilities
 
+    GameState.addFeedEvent('attack', attackerId, attacker.name, {
+      targetPlayerName: target.name,
+      amount: totalAttack
+    });
+
     return {
       success: true,
       antsRemoved: removed,
@@ -543,6 +569,11 @@ export const GameActions = {
     // Consume the accumulated attack power
     attacker.attackPower = 0;
 
+    GameState.addFeedEvent('attack', attackerId, attacker.name, {
+      targetPlayerName: target.name,
+      amount: attackPower
+    });
+
     return {
       success: true,
       antsRemoved: removed,
@@ -600,6 +631,10 @@ export const GameActions = {
 
     // Clear pending scout
     GameState.pendingScout = null;
+
+    GameState.addFeedEvent('scout', playerId, player.name, {
+      amount: cardIdsArray.length
+    });
 
     return { success: true, selectedCount: cardIdsArray.length };
   },
@@ -686,6 +721,10 @@ export const GameActions = {
     // Clear pending sabotage
     GameState.pendingSabotage = null;
 
+    GameState.addFeedEvent('sabotage', playerId, player.name, {
+      amount: antIdsArray.length
+    });
+
     return { success: true, removedCount: antIdsArray.length };
   },
 
@@ -745,6 +784,10 @@ export const GameActions = {
     // Clear pending trash
     GameState.pendingTrash = null;
 
+    GameState.addFeedEvent('trash', playerId, player.name, {
+      amount: trashedCount
+    });
+
     return { success: true, trashedCount };
   },
 
@@ -781,6 +824,11 @@ export const GameActions = {
 
     // Clear pending clear
     GameState.pendingClear = null;
+
+    GameState.addFeedEvent('clear', GameState.currentPlayer,
+      GameState.players[GameState.currentPlayer]?.name || 'Unknown', {
+      amount: cardIdsArray.length
+    });
 
     return { success: true, clearedCount: cardIdsArray.length };
   },

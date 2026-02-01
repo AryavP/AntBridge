@@ -12,9 +12,28 @@ export const GameState = {
   constructionDeck: [],
   objectivesByTier: {},  // Organized objectives by tier
   currentTier: 1,  // Current construction tier
+  activityFeed: [],  // Real-time game log events
   startedAt: null,
   status: 'waiting', // 'waiting', 'active', 'finished'
   winner: null,
+
+  // Add an event to the activity feed (max 50 events)
+  addFeedEvent(type, playerId, playerName, data = {}) {
+    const event = {
+      id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      timestamp: Date.now(),
+      type,
+      playerId,
+      playerName,
+      data
+    };
+    this.activityFeed.push(event);
+    // Trim to last 50 events
+    if (this.activityFeed.length > 50) {
+      this.activityFeed = this.activityFeed.slice(-50);
+    }
+    return event;
+  },
 
   // Player state template
   createPlayerState(playerId, playerName) {
@@ -47,6 +66,7 @@ export const GameState = {
     this.constructionRow = [];
     this.marketDeck = [];
     this.constructionDeck = [];
+    this.activityFeed = [];
     this.status = 'waiting';
     this.winner = null;
 
@@ -87,6 +107,7 @@ export const GameState = {
     this.constructionRow = toArray(this.constructionRow);
     this.marketDeck = toArray(this.marketDeck);
     this.constructionDeck = toArray(this.constructionDeck);
+    this.activityFeed = toArray(this.activityFeed);
 
     // Ensure player arrays are initialized
     Object.keys(this.players || {}).forEach(playerId => {
@@ -284,6 +305,7 @@ export const GameState = {
       pendingSabotage: this.pendingSabotage || null,
       pendingTrash: this.pendingTrash || null,
       pendingClear: this.pendingClear || null,
+      activityFeed: this.activityFeed || [],
       startedAt: this.startedAt,
       status: this.status,
       winner: this.winner

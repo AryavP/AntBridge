@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ant Bridge - Build a Bridge to the Moon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -21,7 +24,7 @@
     <!-- Lobby Screen -->
     <div id="lobby-screen" class="screen" style="display: none;">
         <div class="lobby-container">
-            <h1>🐜 Ant Bridge 🌙</h1>
+            <h1>Ant Bridge</h1>
             <p class="tagline">Build a colony and construct a bridge to the moon!</p>
 
             <div class="lobby-form">
@@ -64,7 +67,7 @@
         <div class="game-container">
             <!-- Header -->
             <header class="game-header">
-                <h1>🐜 Ant Bridge 🌙</h1>
+                <h1>Ant Bridge</h1>
                 <div id="game-info"></div>
             </header>
 
@@ -104,19 +107,24 @@
                             <button id="play-for-attack-btn" class="btn btn-danger" style="display: none;">Play for Attack</button>
                             <button id="resolve-btn" class="btn btn-success" style="display: none;">Resolve Action</button>
                             <button id="clear-selection-btn" class="btn btn-secondary" style="display: none;">Clear Selection</button>
-                            <button id="refresh-trade-btn" class="btn btn-secondary">🔄 Refresh Trade</button>
+                            <button id="refresh-trade-btn" class="btn btn-secondary">Refresh Trade</button>
                             <button id="end-turn-btn" class="btn btn-primary btn-large">End Turn</button>
                         </div>
                     </section>
                 </main>
 
-                <!-- Right Sidebar - Messages -->
-                <aside class="messages-sidebar">
-                    <h2>Messages</h2>
-                    <div id="messages"></div>
+                <!-- Right Sidebar - Activity Feed -->
+                <aside class="feed-sidebar">
+                    <h2>Activity</h2>
+                    <div id="activity-feed" class="activity-feed"></div>
                 </aside>
             </div>
         </div>
+    </div>
+
+    <!-- Turn Banner Overlay -->
+    <div id="turn-banner" class="turn-banner" style="display: none;">
+        <div class="turn-banner-text">YOUR TURN</div>
     </div>
 
     <!-- Action Menu (Modal) -->
@@ -140,6 +148,9 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Anime.js -->
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 
     <!-- Game Scripts (as ES6 modules) -->
     <script type="module" src="js/main.js"></script>

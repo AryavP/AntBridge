@@ -6,6 +6,7 @@ import { GameActions } from '../game/actions.js';
 import { GameRules } from '../game/rules.js';
 import { UIRender } from './render.js';
 import { ModalManager } from './modal.js';
+import { Animations } from './animations.js';
 import { logger, LogCategory } from '../utils/logger.js';
 
 export const EventHandlers = {
@@ -434,6 +435,12 @@ export const EventHandlers = {
     const results = [];
     let totalAttack = 0;
 
+    // Animate selected cards out
+    this.selectedHandIndices.forEach(idx => {
+      const el = document.querySelector(`.hand .card[data-hand-index="${idx}"]`);
+      if (el) Animations.playCard(el);
+    });
+
     // Get all card IDs FIRST, before playing any (to avoid index shifting)
     const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
     const cardIds = sortedIndices.map(index => player.hand[index]);
@@ -471,6 +478,14 @@ export const EventHandlers = {
     const results = [];
     let totalResources = 0;
 
+    // Animate selected cards out before processing
+    const cardElements = [];
+    this.selectedHandIndices.forEach(idx => {
+      const el = document.querySelector(`.hand .card[data-hand-index="${idx}"]`);
+      if (el) cardElements.push(el);
+    });
+    cardElements.forEach(el => Animations.playCard(el));
+
     // Sort descending and get all card IDs FIRST, before playing any
     const sortedIndices = [...this.selectedHandIndices].sort((a, b) => b - a);
     const cardIds = sortedIndices.map(index => player.hand[index]);
@@ -490,7 +505,6 @@ export const EventHandlers = {
       UIRender.showMessage(`Played ${results.length} card(s) for ${totalResources} resources`, 'success');
       this.clearSelection();
       this.syncAndRender();
-      // Pending events will be checked by Firebase listener after sync
     }
   },
 
@@ -561,6 +575,10 @@ export const EventHandlers = {
       );
 
       if (result.success) {
+        // Flash the target player
+        const targetDiv = document.querySelector(`.player[data-player-id="${this.selectedTarget.targetPlayerId}"]`);
+        if (targetDiv) Animations.attackFlash(targetDiv);
+
         const objective = GameState.getObjectiveById(result.objectiveDestroyed, this.constructionData);
         UIRender.showMessage(
           `Attack successful! Destroyed "${objective.name}" with ${player.attackPower} attack power - ${result.antsRemoved} ant(s) returned to discard. +1 VP!`,
@@ -573,6 +591,12 @@ export const EventHandlers = {
       }
       return;
     }
+
+    // Animate selected cards out
+    this.selectedHandIndices.forEach(idx => {
+      const el = document.querySelector(`.hand .card[data-hand-index="${idx}"]`);
+      if (el) Animations.playCard(el);
+    });
 
     // Attack with selected cards (triggers card abilities)
     // Get all card IDs FIRST, before attacking (sort descending to avoid index shifting)
@@ -588,6 +612,10 @@ export const EventHandlers = {
     );
 
     if (result.success) {
+      // Flash the target player
+      const targetDiv = document.querySelector(`.player[data-player-id="${this.selectedTarget.targetPlayerId}"]`);
+      if (targetDiv) Animations.attackFlash(targetDiv);
+
       const objective = GameState.getObjectiveById(result.objectiveDestroyed, this.constructionData);
       UIRender.showMessage(
         `Attack successful! Destroyed "${objective.name}" - ${result.antsRemoved} ant(s) returned to discard. +1 VP!`,
@@ -595,7 +623,6 @@ export const EventHandlers = {
       );
       this.clearSelection();
       this.syncAndRender();
-      // Pending events will be checked by Firebase listener after sync
     } else {
       UIRender.showMessage(result.error, 'error');
     }
@@ -648,6 +675,12 @@ export const EventHandlers = {
       return;
     }
 
+    // Animate trade cards flying away
+    this.selectedTradeIndices.forEach(idx => {
+      const el = document.querySelector(`.trade-row .card[data-trade-index="${idx}"]`);
+      if (el) Animations.buyCard(el);
+    });
+
     // Buy all selected cards
     const purchased = [];
     for (const {cardId, card} of cardsToBuy) {
@@ -682,6 +715,12 @@ export const EventHandlers = {
       UIRender.showMessage('Turn ended', 'success');
       this.clearSelection();
       this.syncAndRender();
+
+      // Show "YOUR TURN" banner if it's now this player's turn
+      // (covers single-tab and same-device testing)
+      if (GameState.currentPlayer === this.currentPlayerId) {
+        Animations.newTurn();
+      }
     } else {
       UIRender.showMessage(result.error, 'error');
     }
@@ -708,12 +747,15 @@ export const EventHandlers = {
     this.syncAndRender();
   },
 
-  // Sync state to Firebase and re-render
+  // Sync state to Firebase - the Firebase listener will handle re-rendering
+  // with targeted updates and animations intact
   syncAndRender() {
     if (this.updateCallback) {
       this.updateCallback(GameState.serialize());
     }
-    UIRender.renderGame();
+    // Don't call UIRender.renderGame() here - the Firebase 'value' listener
+    // will fire and do diff-based targeted updates, preserving animations.
+    // Just update selection UI immediately.
     this.updateSelectionUI();
   },
 

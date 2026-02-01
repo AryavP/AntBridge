@@ -2,17 +2,20 @@
 // Handles rendering all game elements to the DOM
 
 import { GameState } from '../game/state.js';
+import { Animations } from './animations.js';
 
 export const UIRender = {
   cardData: null,
   constructionData: null,
   currentPlayerId: null,
+  lastSeenFeedIndex: 0,  // Track last rendered feed event index
 
   // Initialize with game data
   init(cardData, constructionData, playerId) {
     this.cardData = cardData;
     this.constructionData = constructionData;
     this.currentPlayerId = playerId;
+    this.lastSeenFeedIndex = 0;
   },
 
   // Render entire game state
@@ -27,6 +30,7 @@ export const UIRender = {
     this.renderConstructionRow();
     this.renderCurrentPlayerHand();
     this.renderGameInfo();
+    this.renderNewFeedEvents();
   },
 
   // Render all players' info
@@ -335,20 +339,166 @@ export const UIRender = {
     `;
   },
 
-  // Show message to user
+  // Show message as a temporary toast notification
   showMessage(message, type = 'info') {
-    const messageContainer = document.getElementById('messages');
-    if (!messageContainer) return;
+    // Create a toast notification instead of using the old messages sidebar
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.style.cssText = 'position:fixed;top:70px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+      document.body.appendChild(toastContainer);
+    }
+
+    const colorMap = {
+      info: 'var(--blue)',
+      success: 'var(--emerald)',
+      error: 'var(--red)'
+    };
+    const color = colorMap[type] || colorMap.info;
 
     const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${type}`;
+    msgDiv.style.cssText = `padding:10px 16px;border-radius:8px;font-size:13px;color:var(--text-primary);background:var(--bg-surface);border-left:3px solid ${color};box-shadow:0 4px 15px rgba(0,0,0,0.4);animation:feedSlideIn 0.3s ease;pointer-events:auto;max-width:320px;`;
     msgDiv.textContent = message;
 
-    messageContainer.appendChild(msgDiv);
+    toastContainer.appendChild(msgDiv);
 
     setTimeout(() => {
-      msgDiv.remove();
+      msgDiv.style.opacity = '0';
+      msgDiv.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => msgDiv.remove(), 300);
     }, 3000);
+  },
+
+  // Render new feed events (appends only new items)
+  renderNewFeedEvents() {
+    const feedContainer = document.getElementById('activity-feed');
+    if (!feedContainer) return;
+
+    const feed = GameState.activityFeed || [];
+
+    // Only render events we haven't seen yet
+    const newEvents = feed.slice(this.lastSeenFeedIndex);
+
+    newEvents.forEach(event => {
+      const itemDiv = document.createElement('div');
+      const cssType = event.type.replace(/_/g, '-');
+      itemDiv.className = `feed-item feed-${cssType}`;
+      itemDiv.dataset.eventId = event.id;
+      itemDiv.innerHTML = this.generateFeedText(event);
+      feedContainer.appendChild(itemDiv);
+    });
+
+    this.lastSeenFeedIndex = feed.length;
+
+    // Auto-scroll to bottom
+    feedContainer.scrollTop = feedContainer.scrollHeight;
+  },
+
+  // Generate human-readable feed text for an event
+  generateFeedText(event) {
+    const player = `<span class="feed-player">${event.playerName}</span>`;
+    const d = event.data || {};
+    const hl = (t) => `<span class="feed-highlight">${t}</span>`;
+
+    switch (event.type) {
+      case 'card_played':
+        return `${player} played ${hl(d.cardName || 'a card')}${d.resources ? ` for ${hl(d.resources)} resources` : ''}`;
+      case 'card_bought':
+        return `${player} bought ${hl(d.cardName || 'a card')} for ${hl(d.cost)} resources${d.vpGained ? ` (+${d.vpGained} VP)` : ''}`;
+      case 'objective_placed':
+        return `${player} placed ${hl(d.cardName || 'an ant')} on ${hl(d.objectiveName || 'an objective')}`;
+      case 'objective_scored':
+        return `${player} scored ${hl(d.objectiveName || 'an objective')} for ${hl(d.vpGained || 0)} VP!`;
+      case 'attack':
+        return `${player} attacked ${hl(d.targetPlayerName || 'opponent')} with ${hl(d.amount || 0)} power`;
+      case 'scout':
+        return `${player} scouted and kept ${hl(d.amount || 1)} card(s)`;
+      case 'sabotage':
+        return `${player} lost ${hl(d.amount || 1)} ant(s) to sabotage`;
+      case 'trash':
+        return `${player} trashed ${hl(d.amount || 1)} card(s)`;
+      case 'steal':
+        return `${player} was forced to discard`;
+      case 'clear':
+        return `${player} cleared ${hl(d.amount || 1)} card(s) from trade row`;
+      case 'turn_start':
+        return `${player}'s turn begins`;
+      case 'turn_end':
+        return `${player} ended their turn`;
+      default:
+        return `${player} performed an action`;
+    }
+  },
+
+  // === Granular update methods for targeted rendering (Phase 3) ===
+
+  // Update only player stats without re-rendering everything
+  updatePlayerStats() {
+    Object.values(GameState.players).forEach(player => {
+      const playerDiv = document.querySelector(`.player[data-player-id="${player.id}"]`);
+      if (!playerDiv) return;
+
+      const vp = GameState.calculateVP(player.id);
+
+      // Update stat values with animation on change
+      const vpEl = playerDiv.querySelector('.vp');
+      const resEl = playerDiv.querySelector('.resources');
+      const atkEl = playerDiv.querySelector('.attack-power');
+      const deckEl = playerDiv.querySelector('.deck-count');
+      const handEl = playerDiv.querySelector('.hand-count');
+      const discardEl = playerDiv.querySelector('.discard-count');
+
+      if (vpEl && vpEl.textContent !== String(vp)) {
+        vpEl.textContent = vp;
+        Animations.statPulse(vpEl);
+      }
+      if (resEl && resEl.textContent !== String(player.resources)) {
+        resEl.textContent = player.resources;
+        Animations.statPulse(resEl);
+      }
+      if (atkEl) atkEl.textContent = player.attackPower || 0;
+      if (deckEl) deckEl.textContent = player.deck.length;
+      if (handEl) handEl.textContent = player.hand.length;
+      if (discardEl) discardEl.textContent = player.discard.length;
+
+      // Update current-turn class
+      if (player.id === GameState.currentPlayer) {
+        playerDiv.classList.add('current-turn');
+      } else {
+        playerDiv.classList.remove('current-turn');
+      }
+    });
+  },
+
+  // Update only the trade row
+  updateTradeRow() {
+    this.renderTradeRow();
+  },
+
+  // Update only the player's hand
+  updateHand() {
+    this.renderCurrentPlayerHand();
+  },
+
+  // Update only the construction row
+  updateConstructionRow() {
+    this.renderConstructionRow();
+  },
+
+  // Update construction zones inside player cards
+  updateConstructionZones() {
+    Object.values(GameState.players).forEach(player => {
+      const completedEl = document.getElementById(`completed-${player.id}`);
+      const constructionEl = document.getElementById(`construction-${player.id}`);
+
+      if (completedEl) {
+        completedEl.innerHTML = `<h4>Scored Objectives</h4>${this.renderCompletedObjectives(player)}`;
+      }
+      if (constructionEl) {
+        constructionEl.innerHTML = `<h4>Construction Zone (In Progress)</h4>${this.renderPlayerConstruction(player)}`;
+      }
+    });
   },
 
   // Show action menu for a card

@@ -6,6 +6,7 @@ import { GameRules } from './game/rules.js';
 import { GameActions } from './game/actions.js';
 import { UIRender } from './ui/render.js';
 import { EventHandlers } from './ui/events.js';
+import { Animations } from './ui/animations.js';
 import { logger } from './utils/logger.js';
 
 // Firebase configuration
@@ -95,7 +96,7 @@ class AntBridgeGame {
   showLoading(show) {
     const loader = document.getElementById('loading');
     if (loader) {
-      loader.style.display = show ? 'block' : 'none';
+      loader.style.display = show ? 'flex' : 'none';
     }
   }
 
@@ -113,7 +114,7 @@ class AntBridgeGame {
     const lobbyScreen = document.getElementById('lobby-screen');
     const gameScreen = document.getElementById('game-screen');
 
-    if (lobbyScreen) lobbyScreen.style.display = 'block';
+    if (lobbyScreen) lobbyScreen.style.display = 'flex';
     if (gameScreen) gameScreen.style.display = 'none';
 
     // Attach lobby event listeners
@@ -217,7 +218,7 @@ class AntBridgeGame {
     const waitingRoom = document.getElementById('waiting-room');
 
     if (lobbyScreen) lobbyScreen.style.display = 'none';
-    if (waitingRoom) waitingRoom.style.display = 'block';
+    if (waitingRoom) waitingRoom.style.display = 'flex';
 
     // Display game ID
     const gameIdDisplay = document.getElementById('game-id-display');
@@ -277,6 +278,7 @@ class AntBridgeGame {
   listenToGame() {
     let gameInitialized = false;
     let lastUpdateTime = Date.now();
+    let previousCurrentPlayer = null;
 
     this.gameRef.on('value', (snapshot) => {
       const gameData = snapshot.val();
@@ -305,6 +307,22 @@ class AntBridgeGame {
 
       // Load game state if game is active
       if (gameData.status === 'active' || gameData.status === 'finished') {
+        // Snapshot previous state for diffing
+        const prevTradeRow = gameInitialized ? [...(GameState.tradeRow || [])] : null;
+        const prevConstructionRow = gameInitialized ? [...(GameState.constructionRow || [])] : null;
+        const prevHand = gameInitialized && GameState.players[this.playerId]
+          ? [...(GameState.players[this.playerId].hand || [])]
+          : null;
+        const prevPlayers = gameInitialized ? JSON.stringify(
+          Object.fromEntries(Object.entries(GameState.players).map(([id, p]) => [id, {
+            resources: p.resources, vp: p.vp, attackPower: p.attackPower,
+            deckLen: p.deck?.length, handLen: p.hand?.length, discardLen: p.discard?.length,
+            czKeys: Object.keys(p.constructionZone || {}),
+            coLen: p.completedObjectives?.length
+          }]))
+        ) : null;
+
+        previousCurrentPlayer = GameState.currentPlayer;
         GameState.loadState(gameData);
 
         // Only initialize UI once
@@ -313,9 +331,49 @@ class AntBridgeGame {
           gameInitialized = true;
           logger.info('GAME', 'Game screen initialized');
         } else {
-          // Just update the rendering, don't re-initialize
-          logger.debug('UI', 'Re-rendering game from Firebase update');
-          UIRender.renderGame();
+          // Detect turn change and show banner
+          const turnChanged = previousCurrentPlayer !== GameState.currentPlayer;
+          const isNowMyTurn = GameState.currentPlayer === this.playerId;
+
+          if (turnChanged && isNowMyTurn) {
+            Animations.newTurn();
+          }
+
+          // Diff-based targeted updates
+          const curTradeRow = GameState.tradeRow || [];
+          const curConstructionRow = GameState.constructionRow || [];
+          const curHand = GameState.players[this.playerId]?.hand || [];
+          const curPlayers = JSON.stringify(
+            Object.fromEntries(Object.entries(GameState.players).map(([id, p]) => [id, {
+              resources: p.resources, vp: p.vp, attackPower: p.attackPower,
+              deckLen: p.deck?.length, handLen: p.hand?.length, discardLen: p.discard?.length,
+              czKeys: Object.keys(p.constructionZone || {}),
+              coLen: p.completedObjectives?.length
+            }]))
+          );
+
+          const tradeChanged = JSON.stringify(prevTradeRow) !== JSON.stringify(curTradeRow);
+          const constructionChanged = JSON.stringify(prevConstructionRow) !== JSON.stringify(curConstructionRow);
+          const handChanged = JSON.stringify(prevHand) !== JSON.stringify(curHand);
+          const playersChanged = prevPlayers !== curPlayers;
+
+          if (playersChanged) {
+            UIRender.updatePlayerStats();
+            UIRender.updateConstructionZones();
+          }
+          if (tradeChanged) UIRender.updateTradeRow();
+          if (handChanged) UIRender.updateHand();
+          if (constructionChanged) UIRender.updateConstructionRow();
+
+          // Always update game info and feed
+          UIRender.renderGameInfo();
+          UIRender.renderNewFeedEvents();
+
+          // If nothing specific changed, do a full render as fallback
+          if (!playersChanged && !tradeChanged && !handChanged && !constructionChanged && !turnChanged) {
+            UIRender.renderGame();
+          }
+
           // Restore selection UI after rendering
           if (window.eventHandlers) {
             window.eventHandlers.updateSelectionUI();

@@ -128,11 +128,15 @@ export const GameRules = {
     player.resources += player.bonuses.resourcesPerTurn;
 
     GameState.turnPhase = 'action';
+
+    GameState.addFeedEvent('turn_start', playerId, player.name, {});
   },
 
   // End of turn - discard hand and draw new cards
   endTurn(playerId) {
     const player = GameState.players[playerId];
+
+    GameState.addFeedEvent('turn_end', playerId, player.name, {});
 
     // Discard entire hand
     player.discard.push(...player.hand);
